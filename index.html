@@ -488,7 +488,7 @@
             "amarillo": { hex: "#fbbf24", label: "Amarillo" },
             "blanco": { hex: "#ffffff", label: "Blanco" }
         };
-        const MAX_IMAGE_SIZE = 400;
+        const MAX_IMAGE_SIZE = 1024;
         let filtros = { promo:"", paralelo:"", producto:"", texto:"" };
 
         let metodosPago = {
@@ -1651,7 +1651,7 @@
             }
             const a = document.createElement('a');
             a.href = img.src;
-            a.download = 'qr_pago.png';
+            a.download = 'qr_pago.jpg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
