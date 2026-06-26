@@ -423,7 +423,7 @@
     <div id="modal-login" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border-2 border-yellow-400">
             <h3 class="font-black text-xl text-black text-center mb-4">Admin</h3>
-            <input type="password" id="admin-password" placeholder="Clave (admin123)" class="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-yellow-500 outline-none mb-4">
+            <input type="password" id="admin-password" placeholder=" " class="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-yellow-500 outline-none mb-4">
             <p id="error-login" class="text-xs font-semibold text-red-600 hidden text-center mb-4">Clave incorrecta</p>
             <div class="flex space-x-2">
                 <button onclick="cerrarModalAdmin()" class="w-1/2 py-2.5 border rounded-lg text-gray-700 font-bold text-sm hover:bg-gray-50">Cancelar</button>
@@ -474,7 +474,7 @@
         let fechaLimite = "", idEdicion = null, isAdmin = false;
         let authUser = null, localMode = false, datosCargados = false;
         let logoApp = "";
-        const ADMIN_PASS = "admin123";
+        const ADMIN_PASS = "yonitoco";
         const TALLAS = ["XS","S","M","L","XL","XXL","XXXL"];
         const GENEROS = ["Varón","Mujer"];
         const COLORES_MAP = {
