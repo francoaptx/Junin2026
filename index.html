@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pedidos Firebase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+    <nav class="bg-black text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <!-- LOGO DINÁMICO -->
+                    <img id="app-logo" src="" class="hidden h-10 w-10 object-cover rounded-lg border-2 border-yellow-400 shadow-md">
+                    <i id="app-logo-default" data-lucide="shopping-bag" class="h-8 w-8 text-yellow-400"></i>
+                    <span class="font-bold text-xl text-yellow-400">COLEGION NACIONAL JUNIN 200 AÑOS</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="abrirModalAdmin()" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 hover:bg-gray-700 text-yellow-400 flex items-center space-x-1 border border-yellow-400/30">
+                        <i data-lucide="shield-alert" class="h-4 w-4"></i>
+                        <span>Admin</span>
+                    </button>
+                    <button id="btn-cerrar-admin" onclick="cerrarSesionAdmin()" class="hidden px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white flex items-center space-x-1">
+                        <i data-lucide="log-out" class="h-4 w-4"></i>
+                        <span>Salir</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="loader" class="bg-yellow-50 border-b border-yellow-200 text-yellow-800 text-xs px-4 py-2 text-center font-semibold flex items-center justify-center space-x-2">
+        <div class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-yellow-600 border-t-transparent"></div>
+        <span>Conectando...</span>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- VISTA PEDIDOS -->
+        <div id="vista-pedidos" class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+            <div class="bg-black p-6 text-white">
+                <h2 id="titulo-form" class="text-2xl font-bold text-yellow-400">Formulario de Pedido</h2>
+                <p class="text-gray-300 text-sm mt-1">Completa tus datos para registrar tu pedido</p>
+            </div>
+
+            <div class="bg-yellow-50 border-b border-yellow-200 px-6 py-3 text-sm flex items-center justify-between">
+                <span class="flex items-center space-x-2 text-yellow-800">
+                    <i data-lucide="calendar-clock" class="h-4 w-4"></i>
+                    <span>Fecha límite: <strong id="lbl-fecha-limite">Cargando...</strong></span>
+                </span>
+                <span id="badge-estado-limite" class="px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-green-100 text-green-800">Habilitado</span>
+            </div>
+
+            <form id="form-pedido" onsubmit="iniciarPago(event)" class="p-4 sm:p-6 md:p-8 space-y-6">
+                <div id="banner-edicion" class="hidden bg-yellow-50 border border-yellow-300 text-yellow-900 rounded-xl p-4 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <i data-lucide="edit" class="h-5 w-5 text-yellow-600"></i>
+                        <p class="font-bold text-sm">Modo Edición Activo</p>
+                    </div>
+                    <button type="button" onclick="cancelarEdicion()" class="text-xs font-semibold text-red-600 hover:underline">Cancelar</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">CI*</label>
+                        <input type="text" id="ci" required onblur="validarPedidoExistentePorCI(this.value)" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none" placeholder="1234567">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre*</label>
+                        <input type="text" id="nombre" required class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 outline-none" placeholder="Juan Pérez">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Promoción*</label>
+                    <select id="promocion" required class="w-full py-3 px-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-yellow-500 outline-none bg-white"></select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Paralelo*</label>
+                    <div id="grupo-paralelo" class="flex flex-wrap gap-2">
+                        <label class="cursor-pointer"><input type="radio" name="paralelo" value="A" required class="peer sr-only"><div class="px-5 py-2.5 border-2 border-gray-300 rounded-lg font-bold text-gray-700 peer-checked:border-yellow-500 peer-checked:bg-yellow-400 peer-checked:text-black hover:border-yellow-400 transition-all">A</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="paralelo" value="B" required class="peer sr-only"><div class="px-5 py-2.5 border-2 border-gray-300 rounded-lg font-bold text-gray-700 peer-checked:border-yellow-500 peer-checked:bg-yellow-400 peer-checked:text-black hover:border-yellow-400 transition-all">B</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="paralelo" value="C" required class="peer sr-only"><div class="px-5 py-2.5 border-2 border-gray-300 rounded-lg font-bold text-gray-700 peer-checked:border-yellow-500 peer-checked:bg-yellow-400 peer-checked:text-black hover:border-yellow-400 transition-all">C</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="paralelo" value="D" required class="peer sr-only"><div class="px-5 py-2.5 border-2 border-gray-300 rounded-lg font-bold text-gray-700 peer-checked:border-yellow-500 peer-checked:bg-yellow-400 peer-checked:text-black hover:border-yellow-400 transition-all">D</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="paralelo" value="E" required class="peer sr-only"><div class="px-5 py-2.5 border-2 border-gray-300 rounded-lg font-bold text-gray-700 peer-checked:border-yellow-500 peer-checked:bg-yellow-400 peer-checked:text-black hover:border-yellow-400 transition-all">E</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="paralelo" value="F" required class="peer sr-only"><div class="px-5 py-2.5 border-2 border-gray-300 rounded-lg font-bold text-gray-700 peer-checked:border-yellow-500 peer-checked:bg-yellow-400 peer-checked:text-black hover:border-yellow-400 transition-all">F</div></label>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                        <i data-lucide="package" class="h-5 w-5 text-yellow-600"></i>
+                        Productos
+                    </h3>
+                    <div id="contenedor-productos" class="space-y-3"></div>
+                    <button type="button" onclick="agregarFila('productos')" class="mt-3 w-full py-2.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-2 border-dashed border-yellow-300 hover:border-yellow-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="plus-circle" class="h-4 w-4"></i>
+                        Agregar Producto
+                    </button>
+                </div>
+
+                <div>
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                        <i data-lucide="coffee" class="h-5 w-5 text-yellow-600"></i>
+                        Comidas
+                    </h3>
+                    <div id="contenedor-comidas" class="space-y-3"></div>
+                    <button type="button" onclick="agregarFila('comidas')" class="mt-3 w-full py-2.5 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-2 border-dashed border-yellow-300 hover:border-yellow-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="plus-circle" class="h-4 w-4"></i>
+                        Agregar Comida
+                    </button>
+                </div>
+
+                <!-- MENSAJE INFORMATIVO + BOTONES -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t border-gray-200">
+                    <p class="text-xs text-gray-600 italic max-w-md flex items-start gap-1.5 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <i data-lucide="info" class="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5"></i>
+                        <span>Todo comprobante debe ser enviado a su <strong class="text-yellow-800 not-italic">Representante o Delegado de curso</strong></span>
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button id="btn-eliminar" type="button" onclick="confirmarEliminar()" class="hidden px-5 py-3 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 font-semibold">Anular</button>
+                        <button type="submit" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-black hover:bg-gray-800 text-yellow-400 font-bold shadow-lg border border-yellow-400/30">Confirmar Pedido</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- VISTA ADMIN -->
+        <div id="vista-admin" class="hidden space-y-8">
+            <div class="bg-black text-white rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-yellow-400/20">
+                <h2 class="text-2xl font-black text-yellow-400">Panel Admin</h2>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="cambiarSubseccionAdmin('inventario')" id="tab-inv" class="px-4 py-2 text-sm font-semibold rounded-lg bg-yellow-400 text-black hover:bg-yellow-300">Catálogo</button>
+                    <button onclick="cambiarSubseccionAdmin('pagos')" id="tab-pagos" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 text-yellow-400 hover:bg-gray-700 border border-yellow-400/30">Métodos de Pago</button>
+                    <button onclick="cambiarSubseccionAdmin('reportes')" id="tab-rep" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 text-yellow-400 hover:bg-gray-700 border border-yellow-400/30">Reportes</button>
+                </div>
+            </div>
+
+            <div id="sub-inventario" class="space-y-6">
+                <!-- NUEVA SECCIÓN: LOGO DE LA APLICACIÓN -->
+                <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="image" class="h-5 w-5 text-yellow-600"></i>
+                        Logo de la Aplicación
+                    </h3>
+                    <p class="text-xs text-gray-500 mb-4">Personaliza el logo que aparece en la esquina superior izquierda de la plataforma. Formato recomendado: JPG.</p>
+                    <div class="flex flex-col sm:flex-row gap-4 items-start">
+                        <div class="flex-1 w-full">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Subir logo (solo JPG)</label>
+                            <input type="file" id="app-logo-input" accept="image/jpeg,image/jpg" onchange="cargarLogoApp(this)" class="w-full text-xs file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-yellow-100 file:text-yellow-800 hover:file:bg-yellow-200">
+                            <p class="text-xs text-gray-500 mt-1">Se redimensionará automáticamente a 200x200px.</p>
+                        </div>
+                        <div id="app-logo-preview-admin" class="hidden flex flex-col items-center gap-2">
+                            <img id="app-logo-img-admin" class="h-24 w-24 object-cover rounded-xl border-2 border-yellow-400 shadow-md cursor-pointer hover:border-yellow-600 transition-colors" onclick="abrirModalImagen(this.src)">
+                            <button onclick="eliminarLogoApp()" class="text-xs text-red-600 hover:text-red-800 font-semibold flex items-center gap-1">
+                                <i data-lucide="trash-2" class="h-3 w-3"></i>
+                                Eliminar logo
+                            </button>
+                        </div>
+                        <div id="app-logo-sin-imagen" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-xl text-center">
+                            <i data-lucide="image-off" class="h-10 w-10 text-gray-300"></i>
+                            <p class="text-xs text-gray-400">Sin logo personalizado</p>
+                            <p class="text-[10px] text-gray-400">Se mostrará el ícono por defecto</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i data-lucide="calendar" class="h-5 w-5 text-yellow-600"></i>Fecha Límite</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 items-end">
+                        <input type="datetime-local" id="input-fecha-limite" class="flex-1 px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-yellow-500 outline-none">
+                        <button onclick="guardarFechaLimite()" class="px-6 py-2.5 bg-black text-yellow-400 hover:bg-gray-800 font-bold rounded-lg text-sm border border-yellow-400/30">Guardar</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                        <div class="bg-black p-4 border-b border-yellow-400/20"><h3 class="font-bold text-yellow-400">Productos</h3></div>
+                        <div class="p-4 bg-yellow-50 border-b space-y-2">
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="text" id="nuevo-prod-nombre" placeholder="Nombre..." class="flex-1 px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none">
+                                <input type="number" id="nuevo-prod-precio" step="0.01" placeholder="Precio" class="w-full sm:w-24 px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none">
+                            </div>
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="nuevo-prod-talla" class="rounded"><span>Talla</span></label>
+                                <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="nuevo-prod-genero" class="rounded"><span>Género</span></label>
+                                <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="nuevo-prod-color" class="rounded"><span>Color</span></label>
+                            </div>
+                            <div id="nuevo-prod-colores-opciones" class="hidden flex flex-wrap gap-2 items-center p-2 bg-white rounded-lg border border-yellow-200">
+                                <span class="text-xs font-semibold text-gray-600">Colores disponibles:</span>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer"><input type="checkbox" id="nuevo-prod-color-azulmarino" class="rounded"><span class="inline-block w-3 h-3 rounded-full bg-blue-900 border border-gray-400"></span><span>Azul Marino</span></label>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer"><input type="checkbox" id="nuevo-prod-color-amarillo" class="rounded"><span class="inline-block w-3 h-3 rounded-full bg-yellow-400 border border-gray-400"></span><span>Amarillo</span></label>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer"><input type="checkbox" id="nuevo-prod-color-blanco" class="rounded"><span class="inline-block w-3 h-3 rounded-full bg-white border border-gray-400"></span><span>Blanco</span></label>
+                            </div>
+                            <div class="flex gap-2 items-center">
+                                <label class="flex items-center gap-2 text-xs flex-1">
+                                    <i data-lucide="image" class="h-4 w-4 text-gray-500"></i>
+                                    <input type="file" id="nuevo-prod-imagen" accept="image/*" class="text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-yellow-100 file:text-yellow-800 hover:file:bg-yellow-200">
+                                </label>
+                                <button onclick="agregarCatalogo('productos')" class="bg-black text-yellow-400 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-800 border border-yellow-400/30">+</button>
+                            </div>
+                            <div id="preview-prod-imagen" class="hidden mt-2 relative">
+                                <img class="h-20 w-20 object-cover rounded-lg border-2 border-yellow-400">
+                                <button type="button" onclick="limpiarPreviewImagen('prod')" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><i data-lucide="x" class="h-3 w-3"></i></button>
+                            </div>
+                        </div>
+                        <div class="p-4 max-h-96 overflow-y-auto divide-y divide-gray-100" id="lista-productos"></div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                        <div class="bg-black p-4 border-b border-yellow-400/20"><h3 class="font-bold text-yellow-400">Comidas</h3></div>
+                        <div class="p-4 bg-yellow-50 border-b space-y-2">
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="text" id="nuevo-comida-nombre" placeholder="Nombre..." class="flex-1 px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none">
+                                <input type="number" id="nuevo-comida-precio" step="0.01" placeholder="Precio" class="w-full sm:w-24 px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none">
+                            </div>
+                            <div class="flex gap-2 items-center">
+                                <label class="flex items-center gap-2 text-xs flex-1">
+                                    <i data-lucide="image" class="h-4 w-4 text-gray-500"></i>
+                                    <input type="file" id="nuevo-comida-imagen" accept="image/*" class="text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-yellow-100 file:text-yellow-800 hover:file:bg-yellow-200">
+                                </label>
+                                <button onclick="agregarCatalogo('comidas')" class="bg-black text-yellow-400 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-800 border border-yellow-400/30">+</button>
+                            </div>
+                            <div id="preview-comida-imagen" class="hidden mt-2 relative">
+                                <img class="h-20 w-20 object-cover rounded-lg border-2 border-yellow-400">
+                                <button type="button" onclick="limpiarPreviewImagen('comida')" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><i data-lucide="x" class="h-3 w-3"></i></button>
+                            </div>
+                        </div>
+                        <div class="p-4 max-h-96 overflow-y-auto divide-y divide-gray-100" id="lista-comidas"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sub-pagos" class="hidden space-y-6">
+                <div class="bg-black text-white rounded-xl p-6 border border-yellow-400/20">
+                    <h3 class="text-xl font-black text-yellow-400 flex items-center gap-2"><i data-lucide="credit-card" class="h-6 w-6"></i>Configuración de Métodos de Pago</h3>
+                    <p class="text-gray-400 text-sm mt-1">Configure los métodos de pago disponibles para los pedidos.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                        <div class="bg-yellow-50 p-4 border-b border-yellow-200 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i data-lucide="landmark" class="h-5 w-5 text-yellow-600"></i>Depósito Bancario</h3>
+                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="pago-deposito-habilitado" onchange="guardarMetodosPago()" class="sr-only peer"><div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div></label>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Nombre del Banco</label><input type="text" id="pago-banco-nombre" onchange="guardarMetodosPago()" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Número de Cuenta</label><input type="text" id="pago-banco-cuenta" onchange="guardarMetodosPago()" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Propietario de la Cuenta</label><input type="text" id="pago-banco-propietario" onchange="guardarMetodosPago()" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                        <div class="bg-yellow-50 p-4 border-b border-yellow-200 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i data-lucide="qr-code" class="h-5 w-5 text-yellow-600"></i>QR de Pago</h3>
+                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="pago-qr-habilitado" onchange="guardarMetodosPago()" class="sr-only peer"><div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div></label>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Imagen del QR</label><input type="file" id="pago-qr-imagen-input" accept="image/*" onchange="cargarImagenQR(this)" class="w-full text-xs file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-yellow-100 file:text-yellow-800 hover:file:bg-yellow-200"></div>
+                            <div id="pago-qr-preview" class="hidden flex flex-col items-center gap-2">
+                                <img id="pago-qr-img" class="h-40 w-40 object-contain rounded-lg border-2 border-yellow-400 cursor-pointer hover:border-yellow-600" onclick="abrirModalImagen(this.src)">
+                                <button onclick="eliminarImagenQR()" class="text-xs text-red-600 hover:text-red-800 font-semibold">Eliminar imagen QR</button>
+                            </div>
+                            <div id="pago-qr-sin-imagen" class="text-center py-6 text-gray-400 text-xs">
+                                <i data-lucide="qr-code" class="h-12 w-12 mx-auto mb-2 opacity-30"></i>
+                                No hay imagen QR cargada
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                        <div class="bg-yellow-50 p-4 border-b border-yellow-200 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-800 flex items-center gap-2"><i data-lucide="banknote" class="h-5 w-5 text-yellow-600"></i>Efectivo</h3>
+                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="pago-efectivo-habilitado" onchange="guardarMetodosPago()" class="sr-only peer"><div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div></label>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Mensaje informativo</label><textarea id="pago-efectivo-mensaje" onchange="guardarMetodosPago()" rows="4" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none resize-none"></textarea></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sub-reportes" class="hidden space-y-8">
+                <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i data-lucide="filter" class="h-5 w-5 text-yellow-600"></i>Filtros de Búsqueda</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Promoción</label><select id="filtro-promo" onchange="aplicarFiltros()" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"><option value="">Todas</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Paralelo</label><select id="filtro-paralelo" onchange="aplicarFiltros()" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"><option value="">Todos</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Producto</label><select id="filtro-producto" onchange="aplicarFiltros()" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"><option value="">Todos</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Comida</label><select id="filtro-comida" onchange="aplicarFiltros()" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"><option value="">Todas</option></select></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Buscar CI/Nombre</label><input type="text" id="filtro-texto" oninput="aplicarFiltros()" placeholder="CI o nombre..." class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"></div>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <button onclick="limpiarFiltros()" class="text-sm text-yellow-700 hover:text-yellow-900 font-semibold">Limpiar filtros</button>
+                        <span id="contador-filtros" class="text-sm text-gray-600 font-semibold"></span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200"><p class="text-xs font-bold uppercase text-gray-400">Total Pedidos</p><h3 id="stat-total" class="text-3xl font-black text-gray-800 mt-1">0</h3></div>
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200"><p class="text-xs font-bold uppercase text-gray-400">Productos</p><h3 id="stat-prod" class="text-3xl font-black text-yellow-600 mt-1">0.00 Bs.</h3></div>
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200"><p class="text-xs font-bold uppercase text-gray-400">Comidas</p><h3 id="stat-com" class="text-3xl font-black text-yellow-600 mt-1">0.00 Bs.</h3></div>
+                </div>
+
+                <div class="bg-black text-white p-6 rounded-xl shadow-md border border-yellow-400/20">
+                    <p class="text-xs font-bold uppercase text-gray-400">Gran Total (Según Filtros)</p>
+                    <h3 id="stat-gran" class="text-4xl font-black text-yellow-400 mt-1">0.00 Bs.</h3>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                    <div class="border-b pb-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <h3 class="font-bold text-gray-800">Bitácora de Pedidos</h3>
+                        <button onclick="exportarCSV()" class="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1 border border-yellow-300"><i data-lucide="download" class="h-4 w-4"></i>Exportar CSV</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-yellow-50">
+                                <tr><th class="px-4 py-3">CI</th><th class="px-4 py-3">Nombre</th><th class="px-4 py-3">Promo</th><th class="px-4 py-3">Paralelo</th><th class="px-4 py-3">Productos</th><th class="px-4 py-3">Comidas</th><th class="px-4 py-3">Pago</th><th class="px-4 py-3 text-right">Costo</th><th class="px-4 py-3 text-center">Acciones</th></tr>
+                            </thead>
+                            <tbody id="tbody-bitacora"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODALES DE PAGO -->
+    <div id="modal-metodo-pago" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border-2 border-yellow-400">
+            <div class="bg-black p-5 flex items-center justify-between">
+                <h3 class="font-black text-lg text-yellow-400 flex items-center gap-2"><i data-lucide="credit-card" class="h-5 w-5"></i>Seleccionar Método de Pago</h3>
+                <button onclick="cerrarModalPago()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+            <div class="p-5">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-yellow-800">Total del pedido:</p>
+                    <p id="pago-total-pedido" class="text-2xl font-black text-yellow-700">0.00 Bs.</p>
+                </div>
+                <div id="contenedor-metodos-pago" class="space-y-3"></div>
+                <p id="sin-metodos-pago" class="hidden text-center text-gray-400 text-sm py-6">No hay métodos de pago habilitados.</p>
+                <p class="mt-4 text-xs text-gray-600 italic text-center bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                    <i data-lucide="info" class="h-3 w-3 inline-block text-yellow-600 mr-1"></i>
+                    Todo comprobante debe ser enviado a su Representante o Delegado de curso
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-deposito" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden border-2 border-yellow-400">
+            <div class="bg-black p-5 flex items-center justify-between">
+                <h3 class="font-black text-lg text-yellow-400 flex items-center gap-2"><i data-lucide="landmark" class="h-5 w-5"></i>Depósito Bancario</h3>
+                <button onclick="cerrarSubModalPago()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 space-y-3">
+                    <div><p class="text-xs font-semibold text-gray-500 uppercase">Banco</p><p id="dep-banco" class="font-bold text-gray-800 text-lg"></p></div>
+                    <div><p class="text-xs font-semibold text-gray-500 uppercase">Nro. de Cuenta</p><p id="dep-cuenta" class="font-mono font-bold text-gray-800 text-lg"></p></div>
+                    <div><p class="text-xs font-semibold text-gray-500 uppercase">Titular</p><p id="dep-titular" class="font-bold text-gray-800 text-lg"></p></div>
+                </div>
+                <p class="text-xs text-gray-500 text-center">Realice el depósito y conserve su comprobante.</p>
+                <button onclick="confirmarPedidoConPago('deposito')" class="w-full py-3 bg-black text-yellow-400 font-bold rounded-xl hover:bg-gray-800 border border-yellow-400/30">Ya realicé el depósito - Confirmar Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-qr" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden border-2 border-yellow-400">
+            <div class="bg-black p-5 flex items-center justify-between">
+                <h3 class="font-black text-lg text-yellow-400 flex items-center gap-2"><i data-lucide="qr-code" class="h-5 w-5"></i>QR de Pago</h3>
+                <button onclick="cerrarSubModalPago()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex justify-center"><img id="qr-pago-img" src="" class="h-56 w-56 object-contain rounded-xl border-4 border-yellow-400 cursor-pointer hover:border-yellow-600" onclick="abrirModalImagen(this.src)"></div>
+                <p class="text-xs text-gray-500 text-center">Escanee el código QR con su aplicación bancaria.</p>
+                <button onclick="confirmarPedidoConPago('qr')" class="w-full py-3 bg-black text-yellow-400 font-bold rounded-xl hover:bg-gray-800 border border-yellow-400/30">Ya realicé el pago QR - Confirmar Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-efectivo" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden border-2 border-yellow-400">
+            <div class="bg-black p-5 flex items-center justify-between">
+                <h3 class="font-black text-lg text-yellow-400 flex items-center gap-2"><i data-lucide="banknote" class="h-5 w-5"></i>Pago en Efectivo</h3>
+                <button onclick="cerrarSubModalPago()" class="text-gray-400 hover:text-white"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-5 text-center">
+                    <i data-lucide="info" class="h-10 w-10 mx-auto text-yellow-600 mb-3"></i>
+                    <p id="efectivo-mensaje" class="text-sm text-gray-700 font-medium"></p>
+                </div>
+                <button onclick="confirmarPedidoConPago('efectivo')" class="w-full py-3 bg-black text-yellow-400 font-bold rounded-xl hover:bg-gray-800 border border-yellow-400/30">Entendido - Confirmar Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-imagen" class="hidden fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50" onclick="cerrarModalImagen(event)">
+        <div class="relative max-w-4xl max-h-[90vh]">
+            <button onclick="cerrarModalImagen()" class="absolute -top-10 right-0 bg-yellow-400 hover:bg-yellow-300 text-black rounded-full p-2"><i data-lucide="x" class="h-8 w-8"></i></button>
+            <img id="imagen-ampliada" src="" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border-4 border-yellow-400">
+        </div>
+    </div>
+
+    <div id="modal-login" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 border-2 border-yellow-400">
+            <h3 class="font-black text-xl text-black text-center mb-4">Admin</h3>
+            <input type="password" id="admin-password" placeholder="Clave (admin123)" class="w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-yellow-500 outline-none mb-4">
+            <p id="error-login" class="text-xs font-semibold text-red-600 hidden text-center mb-4">Clave incorrecta</p>
+            <div class="flex space-x-2">
+                <button onclick="cerrarModalAdmin()" class="w-1/2 py-2.5 border rounded-lg text-gray-700 font-bold text-sm hover:bg-gray-50">Cancelar</button>
+                <button onclick="autenticarAdmin()" class="w-1/2 py-2.5 bg-black text-yellow-400 rounded-lg font-bold text-sm hover:bg-gray-800 border border-yellow-400/30">Ingresar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-confirm" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 text-center border-2 border-red-400">
+            <h4 id="confirm-titulo" class="font-bold text-lg text-gray-900 mb-2">¿Confirmar?</h4>
+            <p id="confirm-msg" class="text-gray-500 text-sm mb-4">Esta acción no se puede deshacer.</p>
+            <div class="flex space-x-2">
+                <button onclick="cerrarConfirm(false)" class="w-1/2 py-2.5 border rounded-lg text-gray-700 font-bold text-sm hover:bg-gray-50">Cancelar</button>
+                <button id="btn-confirm-ok" class="w-1/2 py-2.5 bg-red-600 text-white font-bold rounded-lg text-sm hover:bg-red-700">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-notif" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 text-center border-2 border-yellow-400">
+            <h4 id="notif-titulo" class="font-bold text-lg text-gray-900 mb-2">Título</h4>
+            <p id="notif-msg" class="text-gray-500 text-sm mb-4">Mensaje</p>
+            <button onclick="cerrarNotif()" class="w-full py-2.5 bg-black text-yellow-400 font-bold rounded-lg text-sm hover:bg-gray-800 border border-yellow-400/30">Entendido</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBakZcX0xX6r0dRRbYe1zSfTmEv_2pkZNk",
+            authDomain: "promos-54cd2.firebaseapp.com",
+            projectId: "promos-54cd2",
+            storageBucket: "promos-54cd2.firebasestorage.app",
+            messagingSenderId: "881204327467",
+            appId: "1:881204327467:web:8690d9c66393771063266e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "promos-54cd2";
+
+        let productos = [], comidas = [], pedidos = [];
+        let fechaLimite = "", idEdicion = null, isAdmin = false;
+        let authUser = null, localMode = false, datosCargados = false;
+        let logoApp = ""; // NUEVO: Logo de la aplicación
+        const ADMIN_PASS = "admin123";
+        const TALLAS = ["XS","S","M","L","XL","XXL", "XXXL"];
+        const GENEROS = ["Varón","Mujer"];
+        const COLORES_MAP = {
+            "azul marino": { hex: "#1e3a8a", label: "Azul Marino" },
+            "amarillo": { hex: "#fbbf24", label: "Amarillo" },
+            "blanco": { hex: "#ffffff", label: "Blanco" }
+        };
+        const MAX_IMAGE_SIZE = 400;
+        let filtros = { promo:"", paralelo:"", producto:"", comida:"", texto:"" };
+
+        let metodosPago = {
+            deposito: { habilitado: true, banco: "BANCO UNION", cuenta: "2121321323", propietario: "Mario Quinters" },
+            qr: { habilitado: true, imagen: "" },
+            efectivo: { habilitado: true, mensaje: "En esta modalidad debe contactarse con su representante de promoción para realizar el pago en efectivo." }
+        };
+
+        const refPedidos = collection(db, 'artifacts', appId, 'public', 'data', 'pedidos');
+        const refConfig = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'configuracion_general');
+
+        document.getElementById('nuevo-prod-color').addEventListener('change', (e) => {
+            document.getElementById('nuevo-prod-colores-opciones').classList.toggle('hidden', !e.target.checked);
+        });
+
+        function procesarImagen(file, maxSize = MAX_IMAGE_SIZE) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if (w > h) { if (w > maxSize) { h = (h*maxSize)/w; w = maxSize; } }
+                        else { if (h > maxSize) { w = (w*maxSize)/h; h = maxSize; } }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // NUEVAS FUNCIONES: GESTIÓN DEL LOGO
+        async function cargarLogoApp(input) {
+            if (input.files[0]) {
+                const file = input.files[0];
+                // Validar que sea JPG
+                if (!file.type.match('image/jpeg') && !file.name.toLowerCase().endsWith('.jpg') && !file.name.toLowerCase().endsWith('.jpeg')) {
+                    mostrarNotif("Formato inválido", "Solo se permiten archivos JPG.", "error");
+                    input.value = "";
+                    return;
+                }
+                try {
+                    const base64 = await procesarImagen(file, 200);
+                    logoApp = base64;
+                    actualizarUILogo();
+                    await guardarConfigCompleta();
+                    mostrarNotif("Logo actualizado", "El logo se ha guardado correctamente.", "success");
+                } catch (e) {
+                    console.error("Error procesando logo:", e);
+                    mostrarNotif("Error", "No se pudo procesar la imagen.", "error");
+                }
+            }
+        }
+
+        async function eliminarLogoApp() {
+            logoApp = "";
+            document.getElementById('app-logo-input').value = "";
+            actualizarUILogo();
+            await guardarConfigCompleta();
+            mostrarNotif("Logo eliminado", "Se restauró el ícono por defecto.", "info");
+        }
+
+        function actualizarUILogo() {
+            const logoImg = document.getElementById('app-logo');
+            const logoDefault = document.getElementById('app-logo-default');
+            const previewAdmin = document.getElementById('app-logo-preview-admin');
+            const sinImagen = document.getElementById('app-logo-sin-imagen');
+
+            if (logoApp) {
+                // Mostrar logo en navbar
+                logoImg.src = logoApp;
+                logoImg.classList.remove('hidden');
+                logoDefault.classList.add('hidden');
+                // Mostrar preview en admin
+                document.getElementById('app-logo-img-admin').src = logoApp;
+                previewAdmin.classList.remove('hidden');
+                sinImagen.classList.add('hidden');
+            } else {
+                // Mostrar ícono por defecto
+                logoImg.classList.add('hidden');
+                logoDefault.classList.remove('hidden');
+                previewAdmin.classList.add('hidden');
+                sinImagen.classList.remove('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        async function guardarConfigCompleta() {
+            const config = {
+                catalogoProductos: productos,
+                catalogoComidas: comidas,
+                fechaLimiteEdicion: fechaLimite,
+                metodosPago: metodosPago,
+                logoApp: logoApp
+            };
+            if (localMode) {
+                localStorage.setItem('config_local', JSON.stringify(config));
+                return;
+            }
+            if (!authUser) return;
+            try {
+                await setDoc(refConfig, config);
+            } catch (e) {
+                console.error("Error guardando config:", e);
+            }
+        }
+
+        document.getElementById('nuevo-prod-imagen').addEventListener('change', async (e) => { if(e.target.files[0]) { const b = await procesarImagen(e.target.files[0]); const p = document.getElementById('preview-prod-imagen'); p.querySelector('img').src = b; p.classList.remove('hidden'); p.dataset.base64 = b; lucide.createIcons(); }});
+        document.getElementById('nuevo-comida-imagen').addEventListener('change', async (e) => { if(e.target.files[0]) { const b = await procesarImagen(e.target.files[0]); const p = document.getElementById('preview-comida-imagen'); p.querySelector('img').src = b; p.classList.remove('hidden'); p.dataset.base64 = b; lucide.createIcons(); }});
+        function limpiarPreviewImagen(tipo) { const p = document.getElementById(`preview-${tipo}-imagen`); p.classList.add('hidden'); p.querySelector('img').src=''; p.dataset.base64=''; document.getElementById(`nuevo-${tipo}-imagen`).value=''; }
+        function abrirModalImagen(src) { document.getElementById('imagen-ampliada').src = src; document.getElementById('modal-imagen').classList.remove('hidden'); lucide.createIcons(); }
+        function cerrarModalImagen(e) { if(!e||e.target.id==='modal-imagen'||e.target.closest('button')) { document.getElementById('modal-imagen').classList.add('hidden'); document.getElementById('imagen-ampliada').src=''; }}
+
+        async function cargarImagenQR(input) {
+            if (input.files[0]) {
+                const base64 = await procesarImagen(input.files[0]);
+                metodosPago.qr.imagen = base64;
+                document.getElementById('pago-qr-img').src = base64;
+                document.getElementById('pago-qr-preview').classList.remove('hidden');
+                document.getElementById('pago-qr-sin-imagen').classList.add('hidden');
+                guardarMetodosPago();
+            }
+        }
+        function eliminarImagenQR() {
+            metodosPago.qr.imagen = "";
+            document.getElementById('pago-qr-preview').classList.add('hidden');
+            document.getElementById('pago-qr-sin-imagen').classList.remove('hidden');
+            document.getElementById('pago-qr-imagen-input').value = "";
+            guardarMetodosPago();
+        }
+
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { try { await signInWithCustomToken(auth, __initial_auth_token); } catch { await signInAnonymously(auth); } }
+                else { await signInAnonymously(auth); }
+            } catch (error) { console.warn("Auth falló:", error.message); localMode = true; activarLocal(error); }
+        };
+
+        function activarLocal(error) {
+            document.getElementById('loader').className = "bg-yellow-100 border-b border-yellow-300 text-yellow-900 text-xs px-4 py-2 text-center font-semibold";
+            document.getElementById('loader').innerHTML = `<span>Modo local: ${error.message}</span>`;
+            pedidos = JSON.parse(localStorage.getItem('pedidos_local') || '[]');
+            const cc = localStorage.getItem('config_local');
+            if (cc) { const c = JSON.parse(cc); if(c.productos) productos=c.productos; if(c.comidas) comidas=c.comidas; if(c.fechaLimite) fechaLimite=c.fechaLimite; if(c.metodosPago) metodosPago=c.metodosPago; if(c.logoApp !== undefined) logoApp = c.logoApp; }
+            if (!fechaLimite) { let f=new Date(); f.setDate(f.getDate()+5); f.setHours(23,59,0,0); fechaLimite=f.toISOString().slice(0,16); }
+            document.getElementById('input-fecha-limite').value = fechaLimite;
+            datosCargados = true;
+            actualizarFechaUI(); actualizarListasAdmin(); actualizarUIPagos(); actualizarUILogo(); recargarFilasExistentes();
+        }
+
+        function recargarFilasExistentes() {
+            const cp = document.getElementById('contenedor-productos'), cc = document.getElementById('contenedor-comidas');
+            if (!cp.children.length) agregarFila('productos'); else Array.from(cp.children).forEach(f => { const s=f.querySelector('.sel-producto'); if(s){const v=s.value; actualizarOpcionesSelect(s,productos); s.value=v; actualizarOpcionesFila(s,'productos');} });
+            if (!cc.children.length) agregarFila('comidas'); else Array.from(cc.children).forEach(f => { const s=f.querySelector('.sel-comida'); if(s){const v=s.value; actualizarOpcionesSelect(s,comidas); s.value=v; actualizarOpcionesFila(s,'comidas');} });
+        }
+        function actualizarOpcionesSelect(s,c) { const v=s.value; s.innerHTML='<option value="">-- Elegir --</option>'; c.forEach(i=>s.innerHTML+=`<option value="${i.id}">${i.nombre}</option>`); s.value=v; }
+
+        onAuthStateChanged(auth, (user) => {
+            authUser = user;
+            if (user) {
+                localMode = false;
+                document.getElementById('loader').className = "bg-green-50 border-b border-green-200 text-green-800 text-xs px-4 py-2 text-center font-semibold";
+                document.getElementById('loader').innerHTML = ``;
+                //<span>Sincronizado con Firebase (${user.uid})</span>
+                suscribirConfig(); suscribirPedidos();
+            }
+        });
+
+        function suscribirConfig() {
+            if (!authUser || localMode) return;
+            onSnapshot(refConfig, (docSnap) => {
+                if (docSnap.exists()) {
+                    const d = docSnap.data();
+                    if(d.catalogoProductos) productos=d.catalogoProductos;
+                    if(d.catalogoComidas) comidas=d.catalogoComidas;
+                    if(d.fechaLimiteEdicion) { fechaLimite=d.fechaLimiteEdicion; document.getElementById('input-fecha-limite').value=fechaLimite; }
+                    if(d.metodosPago) metodosPago=d.metodosPago;
+                    if(d.logoApp !== undefined) logoApp = d.logoApp;
+                } else {
+                    let f=new Date(); f.setDate(f.getDate()+5); f.setHours(23,59,0,0); fechaLimite=f.toISOString().slice(0,16);
+                    setDoc(refConfig, { catalogoProductos:productos, catalogoComidas:comidas, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp });
+                }
+                datosCargados=true; actualizarFechaUI(); actualizarListasAdmin(); actualizarUIPagos(); actualizarUILogo(); recargarFilasExistentes();
+            });
+        }
+
+        function suscribirPedidos() {
+            if (!authUser || localMode) return;
+            onSnapshot(refPedidos, (snapshot) => { pedidos = snapshot.docs.map(d=>d.data()); if(isAdmin) generarReportes(); });
+        }
+
+        function actualizarUIPagos() {
+            document.getElementById('pago-deposito-habilitado').checked = metodosPago.deposito.habilitado;
+            document.getElementById('pago-banco-nombre').value = metodosPago.deposito.banco;
+            document.getElementById('pago-banco-cuenta').value = metodosPago.deposito.cuenta;
+            document.getElementById('pago-banco-propietario').value = metodosPago.deposito.propietario;
+            document.getElementById('pago-qr-habilitado').checked = metodosPago.qr.habilitado;
+            document.getElementById('pago-efectivo-habilitado').checked = metodosPago.efectivo.habilitado;
+            document.getElementById('pago-efectivo-mensaje').value = metodosPago.efectivo.mensaje;
+            if (metodosPago.qr.imagen) {
+                document.getElementById('pago-qr-img').src = metodosPago.qr.imagen;
+                document.getElementById('pago-qr-preview').classList.remove('hidden');
+                document.getElementById('pago-qr-sin-imagen').classList.add('hidden');
+            } else {
+                document.getElementById('pago-qr-preview').classList.add('hidden');
+                document.getElementById('pago-qr-sin-imagen').classList.remove('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        async function guardarMetodosPago() {
+            metodosPago.deposito.habilitado = document.getElementById('pago-deposito-habilitado').checked;
+            metodosPago.deposito.banco = document.getElementById('pago-banco-nombre').value;
+            metodosPago.deposito.cuenta = document.getElementById('pago-banco-cuenta').value;
+            metodosPago.deposito.propietario = document.getElementById('pago-banco-propietario').value;
+            metodosPago.qr.habilitado = document.getElementById('pago-qr-habilitado').checked;
+            metodosPago.efectivo.habilitado = document.getElementById('pago-efectivo-habilitado').checked;
+            metodosPago.efectivo.mensaje = document.getElementById('pago-efectivo-mensaje').value;
+
+            if (localMode) { localStorage.setItem('config_local', JSON.stringify({productos,comidas,fechaLimite,metodosPago,logoApp})); return; }
+            if (!authUser) return;
+            try { await setDoc(refConfig, { catalogoProductos:productos, catalogoComidas:comidas, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp }); } catch(e) { console.error(e); }
+        }
+
+        function calcularTotalPedido() {
+            let total = 0;
+            document.querySelectorAll('#contenedor-productos > div').forEach(f => {
+                const s = f.querySelector('.sel-producto'), c = parseInt(f.querySelector('.cant-producto').value);
+                if (s && s.value && c > 0) { const p = productos.find(x=>x.id===s.value); if(p) total += p.precio * c; }
+            });
+            document.querySelectorAll('#contenedor-comidas > div').forEach(f => {
+                const s = f.querySelector('.sel-comida'), c = parseInt(f.querySelector('.cant-comida').value);
+                if (s && s.value && c > 0) { const p = comidas.find(x=>x.id===s.value); if(p) total += p.precio * c; }
+            });
+            return total;
+        }
+
+        function iniciarPago(event) {
+            event.preventDefault();
+            if (fechaExpirada() && !isAdmin) { mostrarNotif("No Permitido","Plazo expirado.","error"); return; }
+            const ci=document.getElementById('ci').value.trim(), nombre=document.getElementById('nombre').value.trim(), promocion=parseInt(document.getElementById('promocion').value);
+            const paralelo = document.querySelector('input[name="paralelo"]:checked')?.value;
+            if (!ci||!nombre||!promocion||!paralelo) { mostrarNotif("Faltan Campos","Complete todos los campos incluyendo el paralelo.","warning"); return; }
+
+            const prods = []; document.querySelectorAll('#contenedor-productos > div').forEach(f => { const s=f.querySelector('.sel-producto'),c=parseInt(f.querySelector('.cant-producto').value); if(s.value&&c>0){ const item={id:s.value,cantidad:c}; const t=f.querySelector('.talla-producto'); if(t&&t.value) item.talla=t.value; const g=f.querySelector('.genero-producto'); if(g&&g.value) item.genero=g.value; const col=f.querySelector('.color-producto:checked'); if(col) item.color=col.value; const e=prods.find(x=>x.id===item.id&&x.talla===item.talla&&x.genero===item.genero&&x.color===item.color); if(e) e.cantidad+=c; else prods.push(item); }});
+            const coms = []; document.querySelectorAll('#contenedor-comidas > div').forEach(f => { const s=f.querySelector('.sel-comida'),c=parseInt(f.querySelector('.cant-comida').value); if(s.value&&c>0){ const e=coms.find(x=>x.id===s.value); if(e) e.cantidad+=c; else coms.push({id:s.value,cantidad:c}); }});
+            if (!prods.length && !coms.length) { mostrarNotif("Vacío","Agregue al menos un item.","warning"); return; }
+            if (!idEdicion && pedidos.some(p=>p.ci.toLowerCase()===ci.toLowerCase())) { mostrarNotif("Duplicado","Ya existe pedido con este CI.","warning"); return; }
+
+            const total = calcularTotalPedido();
+            document.getElementById('pago-total-pedido').textContent = `${total.toFixed(2)} Bs.`;
+
+            const cont = document.getElementById('contenedor-metodos-pago');
+            cont.innerHTML = '';
+            let hayMetodos = false;
+
+            if (metodosPago.deposito.habilitado) {
+                hayMetodos = true;
+                cont.innerHTML += `<button onclick="mostrarSubModalPago('deposito')" class="w-full p-4 bg-yellow-50 border-2 border-yellow-300 hover:border-yellow-500 rounded-xl text-left transition-colors flex items-center gap-4">
+                    <div class="p-3 bg-yellow-200 rounded-full text-yellow-700"><i data-lucide="landmark" class="h-6 w-6"></i></div>
+                    <div><p class="font-bold text-gray-800">Depósito Bancario</p><p class="text-xs text-gray-500">${metodosPago.deposito.banco} - ${metodosPago.deposito.cuenta}</p></div>
+                    <i data-lucide="chevron-right" class="h-5 w-5 text-gray-400 ml-auto"></i>
+                </button>`;
+            }
+            if (metodosPago.qr.habilitado && metodosPago.qr.imagen) {
+                hayMetodos = true;
+                cont.innerHTML += `<button onclick="mostrarSubModalPago('qr')" class="w-full p-4 bg-yellow-50 border-2 border-yellow-300 hover:border-yellow-500 rounded-xl text-left transition-colors flex items-center gap-4">
+                    <div class="p-3 bg-yellow-200 rounded-full text-yellow-700"><i data-lucide="qr-code" class="h-6 w-6"></i></div>
+                    <div><p class="font-bold text-gray-800">QR de Pago</p><p class="text-xs text-gray-500">Escanear código QR para pagar</p></div>
+                    <i data-lucide="chevron-right" class="h-5 w-5 text-gray-400 ml-auto"></i>
+                </button>`;
+            }
+            if (metodosPago.efectivo.habilitado) {
+                hayMetodos = true;
+                cont.innerHTML += `<button onclick="mostrarSubModalPago('efectivo')" class="w-full p-4 bg-yellow-50 border-2 border-yellow-300 hover:border-yellow-500 rounded-xl text-left transition-colors flex items-center gap-4">
+                    <div class="p-3 bg-yellow-200 rounded-full text-yellow-700"><i data-lucide="banknote" class="h-6 w-6"></i></div>
+                    <div><p class="font-bold text-gray-800">Efectivo</p><p class="text-xs text-gray-500">Pago en efectivo con representante</p></div>
+                    <i data-lucide="chevron-right" class="h-5 w-5 text-gray-400 ml-auto"></i>
+                </button>`;
+            }
+
+            document.getElementById('sin-metodos-pago').classList.toggle('hidden', hayMetodos);
+            document.getElementById('modal-metodo-pago').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function cerrarModalPago() { document.getElementById('modal-metodo-pago').classList.add('hidden'); }
+        function cerrarSubModalPago() { ['modal-deposito','modal-qr','modal-efectivo'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+
+        function mostrarSubModalPago(tipo) {
+            cerrarModalPago();
+            if (tipo === 'deposito') {
+                document.getElementById('dep-banco').textContent = metodosPago.deposito.banco;
+                document.getElementById('dep-cuenta').textContent = metodosPago.deposito.cuenta;
+                document.getElementById('dep-titular').textContent = metodosPago.deposito.propietario;
+                document.getElementById('modal-deposito').classList.remove('hidden');
+            } else if (tipo === 'qr') {
+                document.getElementById('qr-pago-img').src = metodosPago.qr.imagen;
+                document.getElementById('modal-qr').classList.remove('hidden');
+            } else if (tipo === 'efectivo') {
+                document.getElementById('efectivo-mensaje').textContent = metodosPago.efectivo.mensaje;
+                document.getElementById('modal-efectivo').classList.remove('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        async function confirmarPedidoConPago(metodoPago) {
+            cerrarSubModalPago();
+            const ci=document.getElementById('ci').value.trim(), nombre=document.getElementById('nombre').value.trim(), promocion=parseInt(document.getElementById('promocion').value);
+            const paralelo = document.querySelector('input[name="paralelo"]:checked')?.value || "";
+            const prods=[], coms=[];
+            document.querySelectorAll('#contenedor-productos > div').forEach(f => { const s=f.querySelector('.sel-producto'),c=parseInt(f.querySelector('.cant-producto').value); if(s.value&&c>0){ const item={id:s.value,cantidad:c}; const t=f.querySelector('.talla-producto'); if(t&&t.value) item.talla=t.value; const g=f.querySelector('.genero-producto'); if(g&&g.value) item.genero=g.value; const col=f.querySelector('.color-producto:checked'); if(col) item.color=col.value; const e=prods.find(x=>x.id===item.id&&x.talla===item.talla&&x.genero===item.genero&&x.color===item.color); if(e) e.cantidad+=c; else prods.push(item); }});
+            document.querySelectorAll('#contenedor-comidas > div').forEach(f => { const s=f.querySelector('.sel-comida'),c=parseInt(f.querySelector('.cant-comida').value); if(s.value&&c>0){ const e=coms.find(x=>x.id===s.value); if(e) e.cantidad+=c; else coms.push({id:s.value,cantidad:c}); }});
+
+            const key = (idEdicion||ci).toLowerCase();
+            const nuevo = { ci:idEdicion||ci, nombre, promocion, paralelo, productos:prods, comidas:coms, metodoPago:metodoPago, timestamp:new Date().toISOString() };
+
+            if (localMode) { if(idEdicion){const i=pedidos.findIndex(p=>p.ci.toLowerCase()===idEdicion.toLowerCase());if(i!==-1)pedidos[i]=nuevo;}else pedidos.push(nuevo); localStorage.setItem('pedidos_local',JSON.stringify(pedidos)); mostrarNotif("Guardado","Pedido guardado localmente.","success"); prepararNuevo(); return; }
+            if (!authUser) { mostrarNotif("Conectando...","Esperando conexión.","warning"); return; }
+            try { await setDoc(doc(db,'artifacts',appId,'public','data','pedidos',key),nuevo); mostrarNotif("Guardado","Pedido sincronizado con Firebase.","success"); prepararNuevo(); } catch(e) { console.error(e); mostrarNotif("Error","No se pudo guardar.","error"); }
+        }
+
+        function cambiarSubseccionAdmin(s) {
+            ['inventario','pagos','reportes'].forEach(x=>document.getElementById(`sub-${x}`).classList.add('hidden'));
+            ['tab-inv','tab-pagos','tab-rep'].forEach(x=>document.getElementById(x).className="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 text-yellow-400 hover:bg-gray-700 border border-yellow-400/30");
+            document.getElementById(`sub-${s}`).classList.remove('hidden');
+            const tabMap = {inventario:'tab-inv',pagos:'tab-pagos',reportes:'tab-rep'};
+            document.getElementById(tabMap[s]).className="px-4 py-2 text-sm font-semibold rounded-lg bg-yellow-400 text-black hover:bg-yellow-300";
+            if (s==='reportes') generarReportes();
+        }
+
+        function abrirModalAdmin() { if(isAdmin){document.getElementById('vista-pedidos').classList.add('hidden');document.getElementById('vista-admin').classList.remove('hidden');}else{document.getElementById('admin-password').value="";document.getElementById('error-login').classList.add('hidden');document.getElementById('modal-login').classList.remove('hidden');}}
+        function cerrarModalAdmin() { document.getElementById('modal-login').classList.add('hidden'); }
+        function autenticarAdmin() { if(document.getElementById('admin-password').value===ADMIN_PASS){isAdmin=true;cerrarModalAdmin();document.getElementById('btn-cerrar-admin').classList.remove('hidden');document.getElementById('vista-pedidos').classList.add('hidden');document.getElementById('vista-admin').classList.remove('hidden');mostrarNotif("Acceso Permitido","Bienvenido.","success");generarReportes();}else{document.getElementById('error-login').classList.remove('hidden');}}
+        function cerrarSesionAdmin() { isAdmin=false;document.getElementById('btn-cerrar-admin').classList.add('hidden');document.getElementById('vista-admin').classList.add('hidden');document.getElementById('vista-pedidos').classList.remove('hidden'); }
+        function mostrarNotif(t,m) { document.getElementById('notif-titulo').textContent=t; document.getElementById('notif-msg').textContent=m; document.getElementById('modal-notif').classList.remove('hidden'); }
+        function cerrarNotif() { document.getElementById('modal-notif').classList.add('hidden'); }
+        function solicitarConfirm(t,m,cb) { document.getElementById('confirm-titulo').textContent=t; document.getElementById('confirm-msg').textContent=m; document.getElementById('modal-confirm').classList.remove('hidden'); document.getElementById('btn-confirm-ok').onclick=()=>{cerrarConfirm(true);cb();}; }
+        function cerrarConfirm(c) { document.getElementById('modal-confirm').classList.add('hidden'); }
+        function fechaExpirada() { if(!fechaLimite) return false; return new Date()>new Date(fechaLimite); }
+        function actualizarFechaUI() { const e=document.getElementById('lbl-fecha-limite'),b=document.getElementById('badge-estado-limite'); if(!fechaLimite){e.textContent="No definida";return;} e.textContent=new Date(fechaLimite).toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}); if(fechaExpirada()){b.className="px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-red-100 text-red-800";b.textContent="Expirado";}else{b.className="px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-green-100 text-green-800";b.textContent="Habilitado";} }
+        async function guardarFechaLimite() { const n=document.getElementById('input-fecha-limite').value; if(!n){mostrarNotif("Error","Seleccione fecha.","error");return;} if(localMode){fechaLimite=n;localStorage.setItem('config_local',JSON.stringify({productos,comidas,fechaLimite,metodosPago,logoApp}));actualizarFechaUI();mostrarNotif("Guardado","Fecha local.","success");return;} if(!authUser)return; try{await setDoc(refConfig,{catalogoProductos:productos,catalogoComidas:comidas,fechaLimiteEdicion:n,metodosPago,logoApp});mostrarNotif("Guardado","Fecha en Firebase.","success");}catch(e){mostrarNotif("Error","No se pudo.","error");} }
+
+        function agregarFila(tipo, datos=null) {
+            const cont=document.getElementById(`contenedor-${tipo}`), cat=tipo==='productos'?productos:comidas, div=document.createElement('div');
+            div.className="bg-yellow-50 p-3 rounded-xl border border-yellow-200 space-y-2";
+            let opts='<option value="">-- Elegir --</option>'; cat.forEach(i=>opts+=`<option value="${i.id}">${i.nombre}</option>`);
+            div.innerHTML=`
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <select required class="sel-${tipo.slice(0,-1)} w-full sm:flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-yellow-500 outline-none bg-white" onchange="actualizarOpcionesFila(this,'${tipo}')">${opts}</select>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" required min="1" max="99" value="1" class="cant-${tipo.slice(0,-1)} w-20 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="Cant.">
+                        <button type="button" onclick="this.closest('.bg-yellow-50').remove()" class="p-2 text-gray-400 hover:text-red-500 rounded-lg flex-shrink-0">
+                            <i data-lucide="trash-2" class="h-5 w-5"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="opciones-extra hidden space-y-2"></div>
+            `;
+            cont.appendChild(div); 
+            lucide.createIcons();
+            
+            if(!div.dataset.filaId) div.dataset.filaId = 'fila-' + Date.now() + Math.random();
+            if(datos){
+                const s=div.querySelector(`.sel-${tipo.slice(0,-1)}`);
+                s.value=datos.id;
+                div.querySelector(`.cant-${tipo.slice(0,-1)}`).value=datos.cantidad;
+                actualizarOpcionesFila(s,tipo);
+                if(datos.talla){const t=div.querySelector('.talla-producto');if(t)t.value=datos.talla;}
+                if(datos.genero){const g=div.querySelector('.genero-producto');if(g)g.value=datos.genero;}
+                if(datos.color){const c=div.querySelector(`.color-producto[value="${datos.color}"]`);if(c){c.checked=true;c.dispatchEvent(new Event('change'));}}
+            }
+        }
+
+        function actualizarOpcionesFila(select, tipo) {
+            const fila=select.closest('.bg-yellow-50'), div=fila.querySelector('.opciones-extra'), id=select.value;
+            div.innerHTML='';
+            if(id){
+                const cat=tipo==='productos'?productos:comidas, item=cat.find(p=>p.id===id);
+                if(item){
+                    let contenido = '';
+                    if(item.imagen) contenido+=`<div class="flex items-center gap-3 bg-white p-2 rounded-lg border border-yellow-300 cursor-pointer hover:border-yellow-500 transition-colors" onclick="abrirModalImagen('${item.imagen}')"><img src="${item.imagen}" class="h-16 w-16 object-cover rounded-lg border-2 border-yellow-400 hover:border-yellow-600 transition-colors flex-shrink-0"><div class="flex-1 min-w-0"><p class="text-xs font-semibold text-gray-700">Click para ampliar</p><p class="text-xs text-gray-500 truncate">${item.nombre}</p></div><i data-lucide="zoom-in" class="h-5 w-5 text-yellow-600 flex-shrink-0"></i></div>`;
+                    
+                    if(tipo==='productos'){
+                        let opcionesHTML = '';
+                        if(item.tieneTalla||item.tieneGenero){
+                            opcionesHTML += '<div class="grid grid-cols-2 gap-2">';
+                            if(item.tieneTalla){let o='<option value="">Talla</option>';TALLAS.forEach(t=>o+=`<option value="${t}">${t}</option>`);opcionesHTML+=`<select class="talla-producto px-3 py-1.5 rounded-lg border border-gray-300 text-sm bg-white">${o}</select>`;}
+                            if(item.tieneGenero){let o='<option value="">Género</option>';GENEROS.forEach(g=>o+=`<option value="${g}">${g}</option>`);opcionesHTML+=`<select class="genero-producto px-3 py-1.5 rounded-lg border border-gray-300 text-sm bg-white">${o}</select>`;}
+                            opcionesHTML += '</div>';
+                        }
+                        if(item.tieneColor && item.colores && item.colores.length > 0){
+                            const filaId = fila.dataset.filaId || 'fila-' + Date.now();
+                            fila.dataset.filaId = filaId;
+                            opcionesHTML += `<div class="bg-white p-2 rounded-lg border border-yellow-300"><p class="text-xs font-semibold text-gray-700 mb-2">Color:</p><div class="flex flex-wrap gap-3">`;
+                            item.colores.forEach(col => {
+                                const info = COLORES_MAP[col];
+                                if(info){
+                                    opcionesHTML += `<label class="cursor-pointer group flex flex-col items-center gap-1">
+                                        <input type="radio" name="color-${filaId}" value="${col}" class="color-producto peer sr-only">
+                                        <div class="w-10 h-10 rounded-full border-4 border-gray-300 peer-checked:border-yellow-500 peer-checked:ring-4 peer-checked:ring-yellow-200 hover:border-yellow-400 transition-all flex items-center justify-center shadow-sm" style="background-color: ${info.hex};">
+                                            <i data-lucide="check" class="h-5 w-5 text-white opacity-0 hidden" style="filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));"></i>
+                                        </div>
+                                        <span class="text-[10px] text-gray-600 font-medium">${info.label}</span>
+                                    </label>`;
+                                }
+                            });
+                            opcionesHTML += '</div></div>';
+                        }
+                        if(opcionesHTML){
+                            div.innerHTML = contenido + opcionesHTML;
+                            div.classList.remove('hidden');
+                        } else if(item.imagen){
+                            div.innerHTML = contenido;
+                            div.classList.remove('hidden');
+                        } else {
+                            div.classList.add('hidden');
+                        }
+                    } else {
+                        if(item.imagen){
+                            div.innerHTML = contenido;
+                            div.classList.remove('hidden');
+                        } else {
+                            div.classList.add('hidden');
+                        }
+                    }
+                }
+            } else div.classList.add('hidden');
+            
+            div.querySelectorAll('.color-producto').forEach(r => {
+                r.addEventListener('change', () => {
+                    div.querySelectorAll('.color-producto').forEach(x => {
+                        const label = x.closest('label');
+                        const circle = label.querySelector('div');
+                        const checkIcon = circle.querySelector('i');
+                        if(x.checked){ 
+                            circle.classList.add('border-yellow-500','ring-4','ring-yellow-200');
+                            circle.classList.remove('border-gray-300');
+                            if(checkIcon){ checkIcon.classList.remove('hidden'); checkIcon.classList.add('opacity-100'); }
+                        }
+                        else { 
+                            circle.classList.remove('border-yellow-500','ring-4','ring-yellow-200');
+                            circle.classList.add('border-gray-300');
+                            if(checkIcon){ checkIcon.classList.add('hidden'); checkIcon.classList.remove('opacity-100'); }
+                        }
+                    });
+                });
+            });
+            lucide.createIcons();
+        }
+
+        function prepararNuevo() {
+            idEdicion=null;
+            document.getElementById('form-pedido').reset();
+            document.getElementById('ci').disabled=false;
+            document.getElementById('titulo-form').textContent="Formulario de Pedido";
+            document.getElementById('banner-edicion').classList.add('hidden');
+            document.getElementById('btn-eliminar').classList.add('hidden');
+            document.getElementById('contenedor-productos').innerHTML="";
+            document.getElementById('contenedor-comidas').innerHTML="";
+            agregarFila('productos');
+            agregarFila('comidas');
+        }
+        function validarPedidoExistentePorCI(v) { const ci=v.trim(); if(!ci||idEdicion||!datosCargados)return; const e=pedidos.find(p=>p.ci.toLowerCase()===ci.toLowerCase()); if(e){mostrarNotif("Pedido Existente",`Detectado de ${e.nombre}.`,"info");setTimeout(()=>cargarEdicion(ci),500);} }
+        function cargarEdicion(ci) {
+            const p=pedidos.find(x=>x.ci.toLowerCase()===ci.toLowerCase());
+            if(!p){document.getElementById('ci').value=ci;return;}
+            if(fechaExpirada()&&!isAdmin){mostrarNotif("Expirado","No se puede editar.","error");return;}
+            idEdicion=p.ci;
+            document.getElementById('ci').value=p.ci;
+            document.getElementById('ci').disabled=true;
+            document.getElementById('nombre').value=p.nombre;
+            document.getElementById('promocion').value=p.promocion;
+            if(p.paralelo){const radio = document.querySelector(`input[name="paralelo"][value="${p.paralelo}"]`);if(radio) radio.checked = true;}
+            document.getElementById('titulo-form').textContent="Modificar Pedido";
+            document.getElementById('banner-edicion').classList.remove('hidden');
+            document.getElementById('btn-eliminar').classList.remove('hidden');
+            const cp=document.getElementById('contenedor-productos');cp.innerHTML="";
+            if(p.productos&&p.productos.length)p.productos.forEach(x=>agregarFila('productos',x));else agregarFila('productos');
+            const cc=document.getElementById('contenedor-comidas');cc.innerHTML="";
+            if(p.comidas&&p.comidas.length)p.comidas.forEach(x=>agregarFila('comidas',x));else agregarFila('comidas');
+        }
+        function cancelarEdicion() { prepararNuevo(); mostrarNotif("Cancelado","Edición cancelada.","info"); }
+        window.confirmarEliminar = function() {
+            if(!idEdicion)return;
+            solicitarConfirm("¿Anular?",`¿Eliminar pedido de CI ${idEdicion}?`,async()=>{
+                if(localMode){pedidos=pedidos.filter(p=>p.ci.toLowerCase()!==idEdicion.toLowerCase());localStorage.setItem('pedidos_local',JSON.stringify(pedidos));mostrarNotif("Eliminado","Local.","success");prepararNuevo();return;}
+                try{await deleteDoc(doc(db,'artifacts',appId,'public','data','pedidos',idEdicion.toLowerCase()));mostrarNotif("Eliminado","Firebase.","success");prepararNuevo();}catch(e){mostrarNotif("Error","No se pudo.","error");}
+            });
+        };
+
+        async function actualizarPrecio(tipo,id,v) { const p=parseFloat(v);if(isNaN(p)||p<0){mostrarNotif("Error","Precio inválido.","error");return;}const cat=tipo==='productos'?productos:comidas;const item=cat.find(x=>x.id===id);if(!item)return;item.precio=p;if(localMode){localStorage.setItem('config_local',JSON.stringify({productos,comidas,fechaLimite,metodosPago,logoApp}));actualizarListasAdmin();return;}if(!authUser)return;try{await setDoc(refConfig,{catalogoProductos:productos,catalogoComidas:comidas,fechaLimiteEdicion:fechaLimite,metodosPago,logoApp});actualizarListasAdmin();}catch(e){mostrarNotif("Error","No se pudo.","error");} }
+
+        function editarProducto(tipo,id){
+            const cat=tipo==='productos'?productos:comidas,item=cat.find(x=>x.id===id);
+            if(!item)return;
+            const lista=document.getElementById(tipo==='productos'?'lista-productos':'lista-comidas');
+            lista.querySelectorAll('div[data-item-id]').forEach(div=>{
+                if(div.dataset.itemId===id){
+                    const pf=tipo==='productos'?'prod':'comida';
+                    let colorCheckboxes = '';
+                    if(tipo==='productos'){
+                        const coloresActuales = item.colores || [];
+                        colorCheckboxes = `
+                            <div>
+                                <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="edit-prod-color" ${item.tieneColor?'checked':''} class="rounded"><span>Color</span></label>
+                            </div>
+                            <div id="edit-prod-colores-opciones" class="${item.tieneColor?'':'hidden'} flex flex-wrap gap-2 items-center p-2 bg-white rounded-lg border border-yellow-200">
+                                <span class="text-xs font-semibold text-gray-600">Colores disponibles:</span>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer"><input type="checkbox" id="edit-prod-color-azulmarino" ${coloresActuales.includes('azul marino')?'checked':''} class="rounded"><span class="inline-block w-3 h-3 rounded-full bg-blue-900 border border-gray-400"></span><span>Azul Marino</span></label>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer"><input type="checkbox" id="edit-prod-color-amarillo" ${coloresActuales.includes('amarillo')?'checked':''} class="rounded"><span class="inline-block w-3 h-3 rounded-full bg-yellow-400 border border-gray-400"></span><span>Amarillo</span></label>
+                                <label class="flex items-center gap-1 text-xs cursor-pointer"><input type="checkbox" id="edit-prod-color-blanco" ${coloresActuales.includes('blanco')?'checked':''} class="rounded"><span class="inline-block w-3 h-3 rounded-full bg-white border border-gray-400"></span><span>Blanco</span></label>
+                            </div>
+                        `;
+                    }
+                    div.innerHTML=`<div class="space-y-3 py-3 bg-yellow-50 p-3 rounded-lg border border-yellow-300">
+                        <div class="flex items-center justify-between mb-2"><h4 class="font-bold text-sm text-yellow-800">Editando: ${item.nombre}</h4><button onclick="cancelarEdicionProducto('${tipo}')" class="text-xs text-gray-500">Cancelar</button></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><label class="text-xs font-semibold text-gray-600">Nombre</label><input type="text" id="edit-${pf}-nombre" value="${item.nombre}" class="w-full px-2 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"></div>
+                            <div><label class="text-xs font-semibold text-gray-600">Precio</label><input type="number" id="edit-${pf}-precio" step="0.01" value="${item.precio}" class="w-full px-2 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none"></div>
+                        </div>
+                        ${tipo==='productos'?`
+                            <div class="flex flex-wrap gap-3">
+                                <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="edit-prod-talla" ${item.tieneTalla?'checked':''} class="rounded"><span>Talla</span></label>
+                                <label class="flex items-center gap-1 text-xs"><input type="checkbox" id="edit-prod-genero" ${item.tieneGenero?'checked':''} class="rounded"><span>Género</span></label>
+                                ${colorCheckboxes}
+                            </div>
+                        `:''}
+                        <div><label class="text-xs font-semibold text-gray-600 mb-1 block">Imagen (opcional)</label><input type="file" id="edit-${pf}-imagen" accept="image/*" class="w-full text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-yellow-100 file:text-yellow-800">${item.imagen?`<div class="mt-2 flex items-center gap-2"><img src="${item.imagen}" class="h-12 w-12 object-cover rounded border-2 border-yellow-400"><button type="button" onclick="eliminarImagenEdicion('${tipo}','${id}')" class="text-xs text-red-600 hover:text-red-800">Eliminar</button></div>`:''}</div>
+                        <div class="flex gap-2 pt-2"><button onclick="guardarEdicionProducto('${tipo}','${id}')" class="flex-1 bg-black text-yellow-400 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-800 border border-yellow-400/30">Guardar</button><button onclick="cancelarEdicionProducto('${tipo}')" class="px-3 py-1.5 border rounded-lg text-sm">Cancelar</button></div>
+                    </div>`;
+                    if(tipo==='productos'){
+                        const chkColor = div.querySelector('#edit-prod-color');
+                        const optsColor = div.querySelector('#edit-prod-colores-opciones');
+                        if(chkColor && optsColor){
+                            chkColor.addEventListener('change', (e) => optsColor.classList.toggle('hidden', !e.target.checked));
+                        }
+                    }
+                }
+            });
+            lucide.createIcons();
+        }
+        function cancelarEdicionProducto(){actualizarListasAdmin();}
+        function eliminarImagenEdicion(tipo,id){const cat=tipo==='productos'?productos:comidas;const item=cat.find(x=>x.id===id);if(item){delete item.imagen;editarProducto(tipo,id);}}
+        async function guardarEdicionProducto(tipo,id){
+            const pf=tipo==='productos'?'prod':'comida',cat=tipo==='productos'?productos:comidas,item=cat.find(x=>x.id===id);
+            if(!item)return;
+            const n=document.getElementById(`edit-${pf}-nombre`).value.trim(),p=parseFloat(document.getElementById(`edit-${pf}-precio`).value);
+            if(!n||isNaN(p)||p<0){mostrarNotif("Error","Datos inválidos.","error");return;}
+            item.nombre=n;item.precio=p;
+            if(tipo==='productos'){
+                item.tieneTalla=document.getElementById('edit-prod-talla').checked;
+                item.tieneGenero=document.getElementById('edit-prod-genero').checked;
+                item.tieneColor=document.getElementById('edit-prod-color').checked;
+                item.colores = [];
+                if(item.tieneColor){
+                    if(document.getElementById('edit-prod-color-azulmarino').checked) item.colores.push('azul marino');
+                    if(document.getElementById('edit-prod-color-amarillo').checked) item.colores.push('amarillo');
+                    if(document.getElementById('edit-prod-color-blanco').checked) item.colores.push('blanco');
+                }
+            }
+            const fi=document.getElementById(`edit-${pf}-imagen`);
+            if(fi.files[0]){try{item.imagen=await procesarImagen(fi.files[0]);}catch(e){}}
+            if(localMode){localStorage.setItem('config_local',JSON.stringify({productos,comidas,fechaLimite,metodosPago,logoApp}));actualizarListasAdmin();mostrarNotif("Actualizado","Local.","success");return;}
+            if(!authUser)return;
+            try{await setDoc(refConfig,{catalogoProductos:productos,catalogoComidas:comidas,fechaLimiteEdicion:fechaLimite,metodosPago,logoApp});actualizarListasAdmin();mostrarNotif("Sincronizado","Firebase.","success");}catch(e){mostrarNotif("Error","No se pudo.","error");}
+        }
+
+        function actualizarListasAdmin(){
+            const lp=document.getElementById('lista-productos');lp.innerHTML="";
+            if(!productos.length){lp.innerHTML='<p class="text-xs text-gray-400 text-center py-4">No hay productos</p>';}
+            else{
+                productos.forEach(p=>{
+                    const d=document.createElement('div');
+                    d.className="py-3 text-sm";
+                    d.dataset.itemId=p.id;
+                    let badges = '';
+                    if(p.tieneTalla) badges+='<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Talla</span>';
+                    if(p.tieneGenero) badges+='<span class="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded">Género</span>';
+                    if(p.tieneColor) badges+='<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Color</span>';
+                    if(p.imagen) badges+='<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded border border-yellow-300">Imagen</span>';
+                    let colorPreview = '';
+                    if(p.tieneColor && p.colores && p.colores.length > 0){
+                        colorPreview = '<div class="flex gap-1 mt-1">';
+                        p.colores.forEach(c => {
+                            const info = COLORES_MAP[c];
+                            if(info) colorPreview += `<span class="inline-block w-4 h-4 rounded-full border border-gray-400" style="background-color: ${info.hex};" title="${info.label}"></span>`;
+                        });
+                        colorPreview += '</div>';
+                    }
+                    d.innerHTML=`<div class="flex justify-between items-start mb-2">
+                        <div class="flex items-start gap-2 flex-1 min-w-0">
+                            ${p.imagen?`<img src="${p.imagen}" class="h-12 w-12 object-cover rounded-lg border-2 border-yellow-300 cursor-pointer hover:border-yellow-500 flex-shrink-0" onclick="abrirModalImagen('${p.imagen}')">`:''}
+                            <div class="flex-1 min-w-0">
+                                <span class="font-medium text-gray-700 block truncate">${p.nombre}</span>
+                                <div class="flex flex-wrap gap-1 mt-1">${badges}</div>
+                                ${colorPreview}
+                            </div>
+                        </div>
+                        <div class="flex gap-1 flex-shrink-0">
+                            <button onclick="editarProducto('productos','${p.id}')" class="text-gray-400 hover:text-yellow-600 p-1 rounded"><i data-lucide="edit-3" class="h-4 w-4"></i></button>
+                            <button onclick="eliminarCatalogo('productos','${p.id}')" class="text-gray-400 hover:text-red-600 p-1 rounded"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2"><input type="number" step="0.01" min="0" value="${p.precio}" class="w-24 px-2 py-1 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none" onchange="actualizarPrecio('productos','${p.id}',this.value)"><span class="text-xs font-semibold text-gray-500">Bs.</span></div>`;
+                    lp.appendChild(d);
+                });
+            }
+            const lc=document.getElementById('lista-comidas');lc.innerHTML="";
+            if(!comidas.length){lc.innerHTML='<p class="text-xs text-gray-400 text-center py-4">No hay comidas</p>';}
+            else{
+                comidas.forEach(c=>{
+                    const d=document.createElement('div');
+                    d.className="flex justify-between items-center py-2 text-sm";
+                    d.dataset.itemId=c.id;
+                    d.innerHTML=`<div class="flex items-center gap-2 flex-1 min-w-0">
+                        ${c.imagen?`<img src="${c.imagen}" class="h-12 w-12 object-cover rounded-lg border-2 border-yellow-300 cursor-pointer hover:border-yellow-500 flex-shrink-0" onclick="abrirModalImagen('${c.imagen}')">`:''}
+                        <span class="font-medium text-gray-700 flex-1 truncate">${c.nombre}</span>
+                        ${c.imagen?'<span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded border border-yellow-300 flex-shrink-0">Imagen</span>':''}
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        <input type="number" step="0.01" min="0" value="${c.precio}" class="w-20 px-2 py-1 border rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 outline-none" onchange="actualizarPrecio('comidas','${c.id}',this.value)">
+                        <span class="text-xs font-semibold text-gray-500">Bs.</span>
+                        <button onclick="editarProducto('comidas','${c.id}')" class="text-gray-400 hover:text-yellow-600 p-1 rounded"><i data-lucide="edit-3" class="h-4 w-4"></i></button>
+                        <button onclick="eliminarCatalogo('comidas','${c.id}')" class="text-gray-400 hover:text-red-600 p-1 rounded"><i data-lucide="trash-2" class="h-4 w-4"></i></button>
+                    </div>`;
+                    lc.appendChild(d);
+                });
+            }
+            lucide.createIcons();
+        }
+
+        async function agregarCatalogo(tipo){
+            const pf=tipo==='productos'?'prod':'comida',n=document.getElementById(`nuevo-${pf}-nombre`).value.trim(),p=parseFloat(document.getElementById(`nuevo-${pf}-precio`).value);
+            if(!n||isNaN(p)||p<=0){mostrarNotif("Atención","Datos inválidos.","warning");return;}
+            const id=`${tipo[0]}_${Date.now()}`,cat=tipo==='productos'?productos:comidas,item={id,nombre:n,precio:p};
+            if(tipo==='productos'){
+                item.tieneTalla=document.getElementById('nuevo-prod-talla').checked;
+                item.tieneGenero=document.getElementById('nuevo-prod-genero').checked;
+                item.tieneColor=document.getElementById('nuevo-prod-color').checked;
+                item.colores = [];
+                if(item.tieneColor){
+                    if(document.getElementById('nuevo-prod-color-azulmarino').checked) item.colores.push('azul marino');
+                    if(document.getElementById('nuevo-prod-color-amarillo').checked) item.colores.push('amarillo');
+                    if(document.getElementById('nuevo-prod-color-blanco').checked) item.colores.push('blanco');
+                }
+            }
+            const prev=document.getElementById(`preview-${pf}-imagen`);
+            if(prev.dataset.base64)item.imagen=prev.dataset.base64;
+            cat.push(item);
+            document.getElementById(`nuevo-${pf}-nombre`).value="";
+            document.getElementById(`nuevo-${pf}-precio`).value="";
+            if(tipo==='productos'){
+                document.getElementById('nuevo-prod-talla').checked=false;
+                document.getElementById('nuevo-prod-genero').checked=false;
+                document.getElementById('nuevo-prod-color').checked=false;
+                document.getElementById('nuevo-prod-color-azulmarino').checked=false;
+                document.getElementById('nuevo-prod-color-amarillo').checked=false;
+                document.getElementById('nuevo-prod-color-blanco').checked=false;
+                document.getElementById('nuevo-prod-colores-opciones').classList.add('hidden');
+            }
+            limpiarPreviewImagen(pf);
+            if(localMode){localStorage.setItem('config_local',JSON.stringify({productos,comidas,fechaLimite,metodosPago,logoApp}));actualizarListasAdmin();mostrarNotif("Agregado","Local.","success");return;}
+            if(!authUser)return;
+            try{await setDoc(refConfig,{catalogoProductos:productos,catalogoComidas:comidas,fechaLimiteEdicion:fechaLimite,metodosPago,logoApp});actualizarListasAdmin();mostrarNotif("Sincronizado","Firebase.","success");}catch(e){mostrarNotif("Error","No se pudo.","error");}
+        }
+
+        async function eliminarCatalogo(tipo,id){const cat=tipo==='productos'?productos:comidas;const i=cat.findIndex(x=>x.id===id);if(i!==-1)cat.splice(i,1);if(localMode){localStorage.setItem('config_local',JSON.stringify({productos,comidas,fechaLimite,metodosPago,logoApp}));actualizarListasAdmin();return;}if(!authUser)return;try{await setDoc(refConfig,{catalogoProductos:productos,catalogoComidas:comidas,fechaLimiteEdicion:fechaLimite,metodosPago,logoApp});actualizarListasAdmin();}catch(e){}}
+
+        function generarReportes(){if(!datosCargados)return;llenarFiltrosDesplegables();aplicarFiltros();}
+        function llenarFiltrosDesplegables(){
+            const ps=[...new Set(pedidos.map(p=>p.promocion))].sort((a,b)=>b-a);
+            const sp=document.getElementById('filtro-promo'),sv=sp.value;
+            sp.innerHTML='<option value="">Todas</option>';
+            ps.forEach(p=>sp.innerHTML+=`<option value="${p}" ${p==sv?'selected':''}>Promo ${p}</option>`);
+            const parSet=[...new Set(pedidos.map(p=>p.paralelo).filter(Boolean))].sort();
+            const spar=document.getElementById('filtro-paralelo'),parv=spar.value;
+            spar.innerHTML='<option value="">Todos</option>';
+            parSet.forEach(p=>spar.innerHTML+=`<option value="${p}" ${p==parv?'selected':''}>Paralelo ${p}</option>`);
+            const sprod=document.getElementById('filtro-producto'),pv=sprod.value;
+            sprod.innerHTML='<option value="">Todos</option>';
+            productos.forEach(p=>sprod.innerHTML+=`<option value="${p.id}" ${p.id===pv?'selected':''}>${p.nombre}</option>`);
+            const scom=document.getElementById('filtro-comida'),cv=scom.value;
+            scom.innerHTML='<option value="">Todas</option>';
+            comidas.forEach(c=>scom.innerHTML+=`<option value="${c.id}" ${c.id===cv?'selected':''}>${c.nombre}</option>`);
+        }
+        function aplicarFiltros(){
+            filtros.promo=document.getElementById('filtro-promo').value;
+            filtros.paralelo=document.getElementById('filtro-paralelo').value;
+            filtros.producto=document.getElementById('filtro-producto').value;
+            filtros.comida=document.getElementById('filtro-comida').value;
+            filtros.texto=document.getElementById('filtro-texto').value.toLowerCase();
+            let f=pedidos.filter(p=>{
+                if(filtros.promo&&p.promocion!=filtros.promo)return false;
+                if(filtros.paralelo&&p.paralelo!=filtros.paralelo)return false;
+                if(filtros.producto&&!p.productos.some(x=>x.id===filtros.producto))return false;
+                if(filtros.comida&&!p.comidas.some(x=>x.id===filtros.comida))return false;
+                if(filtros.texto&&!p.ci.toLowerCase().includes(filtros.texto)&&!p.nombre.toLowerCase().includes(filtros.texto))return false;
+                return true;
+            });
+            calcularEstadisticas(f);
+            document.getElementById('contador-filtros').textContent=`${f.length} pedido${f.length!==1?'s':''} encontrado${f.length!==1?'s':''}`;
+            llenarBitacora(f);
+        }
+        function calcularEstadisticas(f){let rp=0,rc=0;f.forEach(ped=>{if(ped.productos)ped.productos.forEach(p=>{const pr=productos.find(x=>x.id===p.id);if(pr)rp+=p.cantidad*pr.precio;});if(ped.comidas)ped.comidas.forEach(c=>{const co=comidas.find(x=>x.id===c.id);if(co)rc+=c.cantidad*co.precio;});});document.getElementById('stat-total').textContent=f.length;document.getElementById('stat-prod').textContent=`${rp.toFixed(2)} Bs.`;document.getElementById('stat-com').textContent=`${rc.toFixed(2)} Bs.`;document.getElementById('stat-gran').textContent=`${(rp+rc).toFixed(2)} Bs.`;}
+        function limpiarFiltros(){document.getElementById('filtro-promo').value="";document.getElementById('filtro-paralelo').value="";document.getElementById('filtro-producto').value="";document.getElementById('filtro-comida').value="";document.getElementById('filtro-texto').value="";aplicarFiltros();}
+
+        function llenarBitacora(f){
+            const tb=document.getElementById('tbody-bitacora');tb.innerHTML="";
+            if(!f.length){tb.innerHTML='<tr><td colspan="9" class="text-center py-6 text-gray-400">Sin registros</td></tr>';return;}
+            f.forEach(ped=>{
+                let dp=[],costo=0;
+                ped.productos.forEach(p=>{
+                    const i=productos.find(x=>x.id===p.id);
+                    const n=i?i.nombre:p.id;
+                    const pr=i?i.precio:0;
+                    costo+=p.cantidad*pr;
+                    dp.push({nombre:n,cantidad:p.cantidad,precio:pr,talla:p.talla,genero:p.genero,color:p.color});
+                });
+                let dc=[];
+                ped.comidas.forEach(c=>{
+                    const i=comidas.find(x=>x.id===c.id);
+                    const n=i?i.nombre:c.id;
+                    const pr=i?i.precio:0;
+                    costo+=c.cantidad*pr;
+                    dc.push({nombre:n,cantidad:c.cantidad,precio:pr});
+                });
+                const tr=document.createElement('tr');
+                tr.className="bg-white border-b hover:bg-yellow-50 text-xs md:text-sm";
+                let ph='<ul class="space-y-1">';
+                dp.forEach(p=>{
+                    let d=[];
+                    if(p.talla)d.push(`<span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs">${p.talla}</span>`);
+                    if(p.genero)d.push(`<span class="bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded text-xs">${p.genero}</span>`);
+                    if(p.color && COLORES_MAP[p.color]){
+                        const info = COLORES_MAP[p.color];
+                        d.push(`<span class="inline-flex items-center gap-1 bg-gray-100 px-1.5 py-0.5 rounded text-xs"><span class="inline-block w-3 h-3 rounded-full border border-gray-400" style="background-color: ${info.hex};"></span>${info.label}</span>`);
+                    }
+                    ph+=`<li class="flex justify-between items-center bg-yellow-50 px-2 py-1 rounded border border-yellow-200"><div class="flex items-center gap-1 flex-wrap"><span class="font-medium text-gray-700">${p.cantidad}x ${p.nombre}</span>${d.join('')}</div><span class="text-gray-600 text-xs">${p.precio.toFixed(2)} Bs</span></li>`;
+                });
+                if(!dp.length)ph+='<li class="text-gray-400 italic">Ninguno</li>';
+                ph+='</ul>';
+                let ch='<ul class="space-y-1">';
+                dc.forEach(c=>{
+                    ch+=`<li class="flex justify-between items-center bg-amber-50 px-2 py-1 rounded border border-amber-200"><span class="font-medium text-gray-700">${c.cantidad}x ${c.nombre}</span><span class="text-gray-600 text-xs">${c.precio.toFixed(2)} Bs</span></li>`;
+                });
+                if(!dc.length)ch+='<li class="text-gray-400 italic">Ninguno</li>';
+                ch+='</ul>';
+                const pagoLabels={deposito:'🏦 Depósito',qr:'📱 QR',efectivo:'💵 Efectivo'};
+                const pagoBadge=pagoLabels[ped.metodoPago]||'<span class="text-gray-400">-</span>';
+                tr.innerHTML=`<td class="px-4 py-3 font-mono font-bold text-gray-900">${ped.ci}</td>
+                    <td class="px-4 py-3 font-semibold text-gray-800">${ped.nombre}</td>
+                    <td class="px-4 py-3"><span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-bold border border-yellow-300">Promo ${ped.promocion}</span></td>
+                    <td class="px-4 py-3 text-center"><span class="bg-black text-yellow-400 px-2 py-1 rounded-full text-xs font-bold">${ped.paralelo||'-'}</span></td>
+                    <td class="px-4 py-3">${ph}</td>
+                    <td class="px-4 py-3">${ch}</td>
+                    <td class="px-4 py-3 text-xs">${pagoBadge}</td>
+                    <td class="px-4 py-3 text-right font-bold text-yellow-700">${costo.toFixed(2)} Bs.</td>
+                    <td class="px-4 py-3 text-center"><div class="flex items-center justify-center space-x-1.5"><button onclick="editarAdmin('${ped.ci}')" class="p-1.5 text-yellow-600 hover:bg-yellow-100 rounded-lg"><i data-lucide="edit-3" class="h-4 w-4"></i></button><button onclick="eliminarAdmin('${ped.ci}')" class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="h-4 w-4"></i></button></div></td>`;
+                tb.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function editarAdmin(ci){idEdicion=ci;const p=pedidos.find(x=>x.ci.toLowerCase()===ci.toLowerCase());if(!p)return;document.getElementById('vista-admin').classList.add('hidden');document.getElementById('vista-pedidos').classList.remove('hidden');cargarEdicion(ci);mostrarNotif("Edición Admin","Editando como admin.","info");}
+        function eliminarAdmin(ci){solicitarConfirm("Eliminar (Admin)",`¿Eliminar pedido de CI ${ci}?`,async()=>{if(localMode){pedidos=pedidos.filter(p=>p.ci.toLowerCase()!==ci.toLowerCase());localStorage.setItem('pedidos_local',JSON.stringify(pedidos));mostrarNotif("Eliminado","Local.","success");generarReportes();return;}try{await deleteDoc(doc(db,'artifacts',appId,'public','data','pedidos',ci.toLowerCase()));mostrarNotif("Eliminado","Firebase.","success");generarReportes();}catch(e){mostrarNotif("Error","No se pudo.","error");}});}
+
+        function exportarCSV(){
+            if(!pedidos.length){mostrarNotif("Sin Datos","No hay pedidos.","warning");return;}
+            let csv="data:text/csv;charset=utf-8,CI,Nombre,Promocion,Paralelo,Productos,Comidas,MetodoPago,Costo,Fecha\n";
+            pedidos.forEach(ped=>{
+                let dp=[],costo=0;
+                ped.productos.forEach(p=>{
+                    const i=productos.find(x=>x.id===p.id);
+                    const n=i?i.nombre:p.id;
+                    const pr=i?i.precio:0;
+                    costo+=p.cantidad*pr;
+                    let d=`${p.cantidad}x ${n}`;
+                    if(p.talla)d+=`(${p.talla})`;
+                    if(p.genero)d+=`[${p.genero}]`;
+                    if(p.color)d+=`{${p.color}}`;
+                    dp.push(d);
+                });
+                let dc=[];
+                ped.comidas.forEach(c=>{
+                    const i=comidas.find(x=>x.id===c.id);
+                    const n=i?i.nombre:c.id;
+                    const pr=i?i.precio:0;
+                    costo+=c.cantidad*pr;
+                    dc.push(`${c.cantidad}x ${n}`);
+                });
+                csv+=`"${ped.ci}","${ped.nombre}","${ped.promocion}","${ped.paralelo||''}","${dp.join('; ')}","${dc.join('; ')}","${ped.metodoPago||'-'}","${costo.toFixed(2)}","${ped.timestamp}"\n`;
+            });
+            const l=document.createElement("a");
+            l.setAttribute("href",encodeURI(csv));
+            l.setAttribute("download",`reporte_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(l);
+            l.click();
+            document.body.removeChild(l);
+        }
+
+        window.cambiarSubseccionAdmin=cambiarSubseccionAdmin;
+        window.abrirModalAdmin=abrirModalAdmin;
+        window.cerrarModalAdmin=cerrarModalAdmin;
+        window.autenticarAdmin=autenticarAdmin;
+        window.cerrarSesionAdmin=cerrarSesionAdmin;
+        window.guardarFechaLimite=guardarFechaLimite;
+        window.agregarFila=agregarFila;
+        window.actualizarOpcionesFila=actualizarOpcionesFila;
+        window.validarPedidoExistentePorCI=validarPedidoExistentePorCI;
+        window.cancelarEdicion=cancelarEdicion;
+        window.iniciarPago=iniciarPago;
+        window.agregarCatalogo=agregarCatalogo;
+        window.eliminarCatalogo=eliminarCatalogo;
+        window.editarAdmin=editarAdmin;
+        window.eliminarAdmin=eliminarAdmin;
+        window.exportarCSV=exportarCSV;
+        window.cerrarNotif=cerrarNotif;
+        window.cerrarConfirm=cerrarConfirm;
+        window.actualizarPrecio=actualizarPrecio;
+        window.aplicarFiltros=aplicarFiltros;
+        window.limpiarFiltros=limpiarFiltros;
+        window.limpiarPreviewImagen=limpiarPreviewImagen;
+        window.abrirModalImagen=abrirModalImagen;
+        window.cerrarModalImagen=cerrarModalImagen;
+        window.editarProducto=editarProducto;
+        window.cancelarEdicionProducto=cancelarEdicionProducto;
+        window.guardarEdicionProducto=guardarEdicionProducto;
+        window.eliminarImagenEdicion=eliminarImagenEdicion;
+        window.guardarMetodosPago=guardarMetodosPago;
+        window.cargarImagenQR=cargarImagenQR;
+        window.eliminarImagenQR=eliminarImagenQR;
+        window.cerrarModalPago=cerrarModalPago;
+        window.cerrarSubModalPago=cerrarSubModalPago;
+        window.mostrarSubModalPago=mostrarSubModalPago;
+        window.confirmarPedidoConPago=confirmarPedidoConPago;
+        window.cargarLogoApp=cargarLogoApp;
+        window.eliminarLogoApp=eliminarLogoApp;
+
+        window.onload = function() {
+            lucide.createIcons();
+            const select = document.getElementById('promocion');
+            for (let a = 2026; a >= 1976; a--) { const o=document.createElement('option'); o.value=a; o.textContent=`Promo ${a}`; select.appendChild(o); }
+            prepararNuevo(); actualizarUILogo(); initAuth();
+        };
+    </script>
+</body>
+</html>
