@@ -679,7 +679,7 @@
             if (user) {
                 localMode = false;
                 document.getElementById('loader').className = "bg-green-50 border-b border-green-200 text-green-800 text-xs px-4 py-2 text-center font-semibold";
-                document.getElementById('loader').innerHTML = ``;
+                document.getElementById('loader').innerHTML = `<span>Sincronizado con Firebase (${user.uid})</span>`;
                 //<span>Sincronizado con Firebase (${user.uid})</span>
                 suscribirConfig(); suscribirPedidos();
             }
