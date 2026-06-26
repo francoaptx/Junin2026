@@ -391,13 +391,6 @@
             </div>
             <div class="p-6 space-y-4">
                 <div class="flex justify-center"><img id="qr-pago-img" src="" class="h-56 w-56 object-contain rounded-xl border-4 border-yellow-400 cursor-pointer hover:border-yellow-600" onclick="abrirModalImagen(this.src)"></div>
-                
-                <!-- BOTÓN DE DESCARGA AGREGADO -->
-                <button onclick="descargarQR()" class="w-full py-3 bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl border-2 border-yellow-500">
-                    <i data-lucide="download" class="h-5 w-5"></i>
-                    Descargar QR
-                </button>
-                
                 <p class="text-xs text-gray-500 text-center">Escanee el código QR y envie su comprobante al Delegado o Representante de su curso.</p>
                 <button onclick="confirmarPedidoConPago('qr')" class="w-full py-3 bg-black text-yellow-400 font-bold rounded-xl hover:bg-gray-800 border border-yellow-400/30">Entendido - Confirmar Pedido</button>
             </div>
@@ -628,24 +621,6 @@
             document.getElementById('pago-qr-sin-imagen').classList.remove('hidden');
             document.getElementById('pago-qr-imagen-input').value = "";
             guardarMetodosPago();
-        }
-
-        // FUNCIÓN PARA DESCARGAR EL QR
-        function descargarQR() {
-            const img = document.getElementById('qr-pago-img');
-            if (!img || !img.src) {
-                mostrarNotif("Error", "No hay imagen QR disponible para descargar.", "error");
-                return;
-            }
-
-            const link = document.createElement('a');
-            link.href = img.src;
-            link.download = `QR_Pago_${new Date().getTime()}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            mostrarNotif("Descargado", "El código QR se ha descargado correctamente.", "success");
         }
 
         const initAuth = async () => {
@@ -1706,7 +1681,6 @@
         window.confirmarPedidoConPago = confirmarPedidoConPago;
         window.cargarLogoApp = cargarLogoApp;
         window.eliminarLogoApp = eliminarLogoApp;
-        window.descargarQR = descargarQR;
 
         window.onload = function() {
             lucide.createIcons();
