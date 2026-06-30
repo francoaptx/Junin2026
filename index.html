@@ -29,6 +29,8 @@
             </div>
         </div>
     </nav>
+
+   
     <div id="loader" class="bg-yellow-50 border-b border-yellow-200 text-yellow-800 text-xs px-4 py-2 text-center font-semibold flex items-center justify-center space-x-2">
         <div class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-yellow-600 border-t-transparent"></div>
         <span>Conectando...</span>
@@ -43,14 +45,17 @@
                     font-weight: bold;">
                 📺 Mira el tutorial para registrar correctamente tu pedido
             </a>
-        </div>
+        </div> 
+         
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <P>EL SERVIDOR ESTA OCUPADO... VUELVA A INTENTARLO MAS TARDE</P>
         <!-- VISTA PEDIDOS -->
-        <div id="vista-pedidos" class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+<!--        <div id="vista-pedidos" class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
             <div class="bg-black p-6 text-white">
                 <h2 id="titulo-form" class="text-2xl font-bold text-yellow-400">Formulario de Pedido</h2>
                 <p class="text-gray-300 text-sm mt-1">Completa tus datos para registrar tu pedido</p>
-            </div>
+            </div> 
 
             <div class="bg-yellow-50 border-b border-yellow-200 px-6 py-3 text-sm flex items-center justify-between">
                 <span class="flex items-center space-x-2 text-yellow-800">
@@ -111,7 +116,6 @@
                         Agregar Producto
                     </button>
                 </div>
-
                 <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl p-6 text-white shadow-xl border-2 border-yellow-400/40 relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rounded-full -mr-16 -mt-16"></div>
                     <div class="absolute bottom-0 left-0 w-24 h-24 bg-yellow-400/5 rounded-full -ml-12 -mb-12"></div>
@@ -127,7 +131,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t border-gray-200">
                     <p class="text-xs text-gray-600 italic max-w-md flex items-start gap-1.5 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                         <i data-lucide="info" class="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5"></i>
@@ -464,7 +467,7 @@
             <p id="notif-msg" class="text-gray-500 text-sm mb-4">Mensaje</p>
             <button onclick="cerrarNotif()" class="w-full py-2.5 bg-black text-yellow-400 font-bold rounded-lg text-sm hover:bg-gray-800 border border-yellow-400/30">Entendido</button>
         </div>
-    </div>
+    </div> 
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
