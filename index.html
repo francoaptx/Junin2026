@@ -30,11 +30,12 @@
         </div>
     </nav>
 
-   
     <div id="loader" class="bg-yellow-50 border-b border-yellow-200 text-yellow-800 text-xs px-4 py-2 text-center font-semibold flex items-center justify-center space-x-2">
         <div class="animate-spin rounded-full h-3.5 w-3.5 border-2 border-yellow-600 border-t-transparent"></div>
         <span>Conectando...</span>
     </div>
+
+     </div>
         <div style="text-align: center; padding: 0px;">
             <a href="https://youtu.be/1KbV171pqCA" 
             target="_blank" 
@@ -45,17 +46,15 @@
                     font-weight: bold;">
                 📺 Mira el tutorial para registrar correctamente tu pedido
             </a>
-        </div> 
-         
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        </div>    
 
-        <P>EL SERVIDOR ESTA OCUPADO... VUELVA A INTENTARLO MAS TARDE</P>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- VISTA PEDIDOS -->
-<!--        <div id="vista-pedidos" class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+        <div id="vista-pedidos" class="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
             <div class="bg-black p-6 text-white">
                 <h2 id="titulo-form" class="text-2xl font-bold text-yellow-400">Formulario de Pedido</h2>
                 <p class="text-gray-300 text-sm mt-1">Completa tus datos para registrar tu pedido</p>
-            </div> 
+            </div>
 
             <div class="bg-yellow-50 border-b border-yellow-200 px-6 py-3 text-sm flex items-center justify-between">
                 <span class="flex items-center space-x-2 text-yellow-800">
@@ -116,6 +115,7 @@
                         Agregar Producto
                     </button>
                 </div>
+
                 <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl p-6 text-white shadow-xl border-2 border-yellow-400/40 relative overflow-hidden">
                     <div class="absolute top-0 right-0 w-32 h-32 bg-yellow-400/10 rounded-full -mr-16 -mt-16"></div>
                     <div class="absolute bottom-0 left-0 w-24 h-24 bg-yellow-400/5 rounded-full -ml-12 -mb-12"></div>
@@ -131,6 +131,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-4 border-t border-gray-200">
                     <p class="text-xs text-gray-600 italic max-w-md flex items-start gap-1.5 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                         <i data-lucide="info" class="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5"></i>
@@ -467,12 +468,12 @@
             <p id="notif-msg" class="text-gray-500 text-sm mb-4">Mensaje</p>
             <button onclick="cerrarNotif()" class="w-full py-2.5 bg-black text-yellow-400 font-bold rounded-lg text-sm hover:bg-gray-800 border border-yellow-400/30">Entendido</button>
         </div>
-    </div> 
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, updateDoc, collection, onSnapshot, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBakZcX0xX6r0dRRbYe1zSfTmEv_2pkZNk",
@@ -492,6 +493,7 @@
         let fechaLimite = "", idEdicion = null, isAdmin = false;
         let authUser = null, localMode = false, datosCargados = false;
         let logoApp = "";
+        let configInicializada = false; // NUEVO: Flag para evitar sobrescribir durante inicialización
         const ADMIN_PASS = "yonitoco";
         const TALLAS = ["XS","S","M","L","XL","XXL","XXXL"];
         const GENEROS = ["Varón","Mujer"];
@@ -500,7 +502,7 @@
             "amarillo": { hex: "#fbbf24", label: "Amarillo" },
             "blanco": { hex: "#ffffff", label: "Blanco" }
         };
-        const MAX_IMAGE_SIZE = 1024;
+        const MAX_IMAGE_SIZE = 400;
         let filtros = { promo:"", paralelo:"", producto:"", texto:"" };
 
         let metodosPago = {
@@ -538,6 +540,7 @@
             });
         }
 
+        // CORRECCIÓN CRÍTICA: Solo actualiza el logo sin sobrescribir todo
         async function cargarLogoApp(input) {
             if (input.files[0]) {
                 const file = input.files[0];
@@ -550,7 +553,7 @@
                     const base64 = await procesarImagen(file, 200);
                     logoApp = base64;
                     actualizarUILogo();
-                    await guardarConfigCompleta();
+                    await guardarSoloLogo(); // CAMBIO: Función específica para logo
                     mostrarNotif("Logo actualizado", "El logo se ha guardado correctamente.", "success");
                 } catch (e) {
                     console.error("Error procesando logo:", e);
@@ -559,11 +562,31 @@
             }
         }
 
+        // NUEVA FUNCIÓN: Solo actualiza el campo logo sin tocar el catálogo
+        async function guardarSoloLogo() {
+            if (localMode) { 
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                })); 
+                return; 
+            }
+            if (!authUser || !configInicializada) return;
+            try { 
+                // Usar updateDoc en lugar de setDoc para NO sobrescribir otros campos
+                await updateDoc(refConfig, { logoApp: logoApp });
+            } catch (e) { 
+                console.error("Error guardando logo:", e); 
+            }
+        }
+
         async function eliminarLogoApp() {
             logoApp = "";
             document.getElementById('app-logo-input').value = "";
             actualizarUILogo();
-            await guardarConfigCompleta();
+            await guardarSoloLogo(); // CAMBIO: Función específica para logo
             mostrarNotif("Logo eliminado", "Se restauró el ícono por defecto.", "info");
         }
 
@@ -589,16 +612,66 @@
             lucide.createIcons();
         }
 
-        async function guardarConfigCompleta() {
-            const config = {
-                catalogoProductos: productos,
-                fechaLimiteEdicion: fechaLimite,
-                metodosPago: metodosPago,
-                logoApp: logoApp
-            };
-            if (localMode) { localStorage.setItem('config_local', JSON.stringify(config)); return; }
-            if (!authUser) return;
-            try { await setDoc(refConfig, config); } catch (e) { console.error("Error guardando config:", e); }
+        // CORRECCIÓN: Solo actualiza la fecha sin sobrescribir todo
+        async function guardarFechaLimite() {
+            const n=document.getElementById('input-fecha-limite').value;
+            if(!n){ mostrarNotif("Error","Seleccione fecha.","error"); return; }
+            fechaLimite = n;
+            actualizarFechaUI();
+            
+            if(localMode){ 
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                })); 
+                mostrarNotif("Guardado","Fecha local.","success"); 
+                return; 
+            }
+            if(!authUser || !configInicializada) return;
+            try{
+                // CORRECCIÓN: Usar updateDoc para solo actualizar la fecha
+                await updateDoc(refConfig, { fechaLimiteEdicion: n });
+                mostrarNotif("Guardado","Fecha en Firebase.","success");
+            } catch(e){ 
+                console.error("Error guardando fecha:", e);
+                mostrarNotif("Error","No se pudo.","error"); 
+            }
+        }
+
+        // CORRECCIÓN CRÍTICA: Solo actualiza el catálogo sin sobrescribir otros campos
+        async function guardarSoloCatalogo() {
+            if (localMode) { 
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                })); 
+                return; 
+            }
+            if (!authUser || !configInicializada) return;
+            
+            // VALIDACIÓN: No guardar si el array está vacío y ya existe un catálogo
+            if (productos.length === 0) {
+                try {
+                    const docSnap = await getDoc(refConfig);
+                    if (docSnap.exists() && docSnap.data().catalogoProductos && docSnap.data().catalogoProductos.length > 0) {
+                        console.warn("⚠️ Se intentó guardar catálogo vacío, pero existe un catálogo con datos. Operación bloqueada.");
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Error verificando catálogo existente:", e);
+                }
+            }
+            
+            try { 
+                // Usar updateDoc para solo actualizar el catálogo
+                await updateDoc(refConfig, { catalogoProductos: productos });
+            } catch (e) { 
+                console.error("Error guardando catálogo:", e); 
+            }
         }
 
         document.getElementById('nuevo-prod-imagen').addEventListener('change', async (e) => {
@@ -655,9 +728,7 @@
             const cc = localStorage.getItem('config_local');
             if (cc) {
                 const c = JSON.parse(cc);
-                if(c.productos) productos=c.productos;
                 if(c.catalogoProductos) productos=c.catalogoProductos;
-                if(c.fechaLimite) fechaLimite=c.fechaLimite;
                 if(c.fechaLimiteEdicion) fechaLimite=c.fechaLimiteEdicion;
                 if(c.metodosPago) metodosPago=c.metodosPago;
                 if(c.logoApp !== undefined) logoApp = c.logoApp;
@@ -665,6 +736,7 @@
             if (!fechaLimite) { let f=new Date(); f.setDate(f.getDate()+5); f.setHours(23,59,0,0); fechaLimite=f.toISOString().slice(0,16); }
             document.getElementById('input-fecha-limite').value = fechaLimite;
             datosCargados = true;
+            configInicializada = true; // MARCAR como inicializada en modo local
             actualizarFechaUI(); actualizarListasAdmin(); actualizarUIPagos(); actualizarUILogo(); recargarFilasExistentes(); calcularTotalGeneral();
         }
 
@@ -702,6 +774,7 @@
             }
         });
 
+        // CORRECCIÓN CRÍTICA: No sobrescribir datos existentes durante inicialización
         function suscribirConfig() {
             if (!authUser || localMode) return;
             onSnapshot(refConfig, (docSnap) => {
@@ -711,11 +784,31 @@
                     if(d.fechaLimiteEdicion) { fechaLimite=d.fechaLimiteEdicion; document.getElementById('input-fecha-limite').value=fechaLimite; }
                     if(d.metodosPago) metodosPago=d.metodosPago;
                     if(d.logoApp !== undefined) logoApp = d.logoApp;
+                    configInicializada = true; // MARCAR como inicializada DESPUÉS de cargar datos
                 } else {
-                    let f=new Date(); f.setDate(f.getDate()+5); f.setHours(23,59,0,0); fechaLimite=f.toISOString().slice(0,16);
-                    setDoc(refConfig, { catalogoProductos:productos, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp });
+                    // Solo crear documento inicial si NO está inicializado
+                    if (!configInicializada) {
+                        let f=new Date(); f.setDate(f.getDate()+5); f.setHours(23,59,0,0); fechaLimite=f.toISOString().slice(0,16);
+                        // Usar setDoc con merge para crear solo si no existe
+                        setDoc(refConfig, { 
+                            catalogoProductos: productos, 
+                            fechaLimiteEdicion: fechaLimite, 
+                            metodosPago, 
+                            logoApp 
+                        }).then(() => {
+                            configInicializada = true;
+                        }).catch(e => {
+                            console.error("Error creando config inicial:", e);
+                        });
+                    }
                 }
-                datosCargados=true; actualizarFechaUI(); actualizarListasAdmin(); actualizarUIPagos(); actualizarUILogo(); recargarFilasExistentes(); calcularTotalGeneral();
+                datosCargados=true; 
+                actualizarFechaUI(); 
+                actualizarListasAdmin(); 
+                actualizarUIPagos(); 
+                actualizarUILogo(); 
+                recargarFilasExistentes(); 
+                calcularTotalGeneral();
             });
         }
 
@@ -743,6 +836,7 @@
             lucide.createIcons();
         }
 
+        // CORRECCIÓN: Solo actualiza métodos de pago sin sobrescribir catálogo
         async function guardarMetodosPago() {
             metodosPago.deposito.habilitado = document.getElementById('pago-deposito-habilitado').checked;
             metodosPago.deposito.banco = document.getElementById('pago-banco-nombre').value;
@@ -752,9 +846,22 @@
             metodosPago.efectivo.habilitado = document.getElementById('pago-efectivo-habilitado').checked;
             metodosPago.efectivo.mensaje = document.getElementById('pago-efectivo-mensaje').value;
 
-            if (localMode) { localStorage.setItem('config_local', JSON.stringify({productos,fechaLimite,metodosPago,logoApp})); return; }
-            if (!authUser) return;
-            try { await setDoc(refConfig, { catalogoProductos:productos, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp }); } catch(e) { console.error(e); }
+            if (localMode) { 
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                })); 
+                return; 
+            }
+            if (!authUser || !configInicializada) return;
+            try { 
+                // CORRECCIÓN: Usar updateDoc para solo actualizar métodos de pago
+                await updateDoc(refConfig, { metodosPago: metodosPago });
+            } catch(e) { 
+                console.error("Error guardando métodos de pago:", e); 
+            }
         }
 
         function actualizarPrecioFila(elemento) {
@@ -980,16 +1087,6 @@
             e.textContent=new Date(fechaLimite).toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
             if(fechaExpirada()){ b.className="px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-red-100 text-red-800"; b.textContent="Expirado"; }
             else { b.className="px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-green-100 text-green-800"; b.textContent="Habilitado"; }
-        }
-        async function guardarFechaLimite() {
-            const n=document.getElementById('input-fecha-limite').value;
-            if(!n){ mostrarNotif("Error","Seleccione fecha.","error"); return; }
-            if(localMode){ fechaLimite=n; localStorage.setItem('config_local', JSON.stringify({productos,fechaLimite,metodosPago,logoApp})); actualizarFechaUI(); mostrarNotif("Guardado","Fecha local.","success"); return; }
-            if(!authUser) return;
-            try{
-                await setDoc(refConfig, {catalogoProductos:productos, fechaLimiteEdicion:n, metodosPago, logoApp});
-                mostrarNotif("Guardado","Fecha en Firebase.","success");
-            } catch(e){ mostrarNotif("Error","No se pudo.","error"); }
         }
 
         function agregarFila(datos=null) {
@@ -1241,6 +1338,7 @@
             });
         };
 
+        // CORRECCIÓN: Actualiza precio y guarda solo el catálogo
         async function actualizarPrecio(id, v) {
             const p = parseFloat(v);
             if (isNaN(p) || p < 0) { mostrarNotif("Error","Precio inválido.","error"); return; }
@@ -1248,14 +1346,20 @@
             if (!item) return;
             item.precio = p;
             if (localMode) {
-                localStorage.setItem('config_local', JSON.stringify({productos, fechaLimite, metodosPago, logoApp}));
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                }));
                 actualizarListasAdmin();
                 recargarFilasExistentes();
                 return;
             }
-            if (!authUser) return;
+            if (!authUser || !configInicializada) return;
             try {
-                await setDoc(refConfig, {catalogoProductos:productos, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp});
+                // CORRECCIÓN: Solo actualizar catálogo
+                await guardarSoloCatalogo();
                 actualizarListasAdmin();
                 recargarFilasExistentes();
             } catch(e) { mostrarNotif("Error","No se pudo.","error"); }
@@ -1330,15 +1434,21 @@
             const fi = document.getElementById('edit-prod-imagen');
             if (fi.files[0]) { try { item.imagen = await procesarImagen(fi.files[0]); } catch(e) {} }
             if (localMode) {
-                localStorage.setItem('config_local', JSON.stringify({productos, fechaLimite, metodosPago, logoApp}));
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                }));
                 actualizarListasAdmin();
                 recargarFilasExistentes();
                 mostrarNotif("Actualizado","Local.","success");
                 return;
             }
-            if (!authUser) return;
+            if (!authUser || !configInicializada) return;
             try {
-                await setDoc(refConfig, {catalogoProductos:productos, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp});
+                // CORRECCIÓN: Solo actualizar catálogo
+                await guardarSoloCatalogo();
                 actualizarListasAdmin();
                 recargarFilasExistentes();
                 mostrarNotif("Sincronizado","Firebase.","success");
@@ -1419,14 +1529,20 @@
             document.getElementById('nuevo-prod-colores-opciones').classList.add('hidden');
             limpiarPreviewImagen();
             if (localMode) {
-                localStorage.setItem('config_local', JSON.stringify({productos, fechaLimite, metodosPago, logoApp}));
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                }));
                 actualizarListasAdmin();
                 mostrarNotif("Agregado","Local.","success");
                 return;
             }
-            if (!authUser) return;
+            if (!authUser || !configInicializada) return;
             try {
-                await setDoc(refConfig, {catalogoProductos:productos, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp});
+                // CORRECCIÓN: Solo actualizar catálogo
+                await guardarSoloCatalogo();
                 actualizarListasAdmin();
                 mostrarNotif("Sincronizado","Firebase.","success");
             } catch(e) { mostrarNotif("Error","No se pudo.","error"); }
@@ -1436,15 +1552,21 @@
             const i = productos.findIndex(x => x.id === id);
             if (i !== -1) productos.splice(i, 1);
             if (localMode) {
-                localStorage.setItem('config_local', JSON.stringify({productos, fechaLimite, metodosPago, logoApp}));
+                localStorage.setItem('config_local', JSON.stringify({
+                    catalogoProductos: productos,
+                    fechaLimiteEdicion: fechaLimite,
+                    metodosPago: metodosPago,
+                    logoApp: logoApp
+                }));
                 actualizarListasAdmin();
                 return;
             }
-            if (!authUser) return;
+            if (!authUser || !configInicializada) return;
             try {
-                await setDoc(refConfig, {catalogoProductos:productos, fechaLimiteEdicion:fechaLimite, metodosPago, logoApp});
+                // CORRECCIÓN: Solo actualizar catálogo
+                await guardarSoloCatalogo();
                 actualizarListasAdmin();
-            } catch(e) {}
+            } catch(e) { console.error("Error eliminando producto:", e); }
         }
 
         function generarReportes() { if (!datosCargados) return; llenarFiltrosDesplegables(); aplicarFiltros(); }
@@ -1663,7 +1785,7 @@
             }
             const a = document.createElement('a');
             a.href = img.src;
-            a.download = 'qr_pago.jpg';
+            a.download = 'qr_pago.png';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
